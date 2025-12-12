@@ -1,0 +1,245 @@
+server:
+  port: 8092
+
+spring:
+  application:
+    name: nova-mall-gateway
+  cloud:
+    gateway:
+      httpclient:
+        connect-timeout: 3000
+        response-timeout: 5000ms
+      auth:
+        enabled: true
+        secret: change-me-please-change-me-please-32
+        whitelist:
+          - /auth/login
+          - /auth/refresh
+          - /user/auth/login
+          - /user/auth/refresh
+          - /doc.html
+          - /swagger-ui
+          - /swagger-ui.html
+          - /swagger-ui/
+          - /webjars
+          - /webjars/
+          - /v3/api-docs
+          - /v3/api-docs/swagger-config
+          - /user/doc.html
+          - /user/swagger-ui
+          - /user/swagger-ui.html
+          - /user/swagger-ui/
+          - /user/webjars
+          - /user/webjars/
+          - /user/v3/api-docs
+          - /user/v3/api-docs/swagger-config
+          - /order/doc.html
+          - /order/swagger-ui
+          - /order/swagger-ui.html
+          - /order/swagger-ui/
+          - /order/webjars
+          - /order/webjars/
+          - /order/v3/api-docs
+          - /order/v3/api-docs/swagger-config
+          - /product/doc.html
+          - /product/swagger-ui
+          - /product/swagger-ui.html
+          - /product/swagger-ui/
+          - /product/webjars
+          - /product/webjars/
+          - /product/v3/api-docs
+          - /product/v3/api-docs/swagger-config
+          - /cart/doc.html
+          - /cart/swagger-ui
+          - /cart/swagger-ui.html
+          - /cart/swagger-ui/
+          - /cart/webjars
+          - /cart/webjars/
+          - /cart/v3/api-docs
+          - /cart/v3/api-docs/swagger-config
+          - /stock/doc.html
+          - /stock/swagger-ui
+          - /stock/swagger-ui.html
+          - /stock/swagger-ui/
+          - /stock/webjars
+          - /stock/webjars/
+          - /stock/v3/api-docs
+          - /stock/v3/api-docs/swagger-config
+          - /actuator
+          - /fallback
+      globalcors:
+        corsConfigurations:
+          '[/**]':
+            allowedOrigins: "*"
+            allowedMethods: "*"
+            allowedHeaders: "*"
+            allowCredentials: false
+      routes:
+        - id: user-auth
+          uri: http://localhost:8083
+          predicates:
+            - Path=/auth/login,/auth/refresh
+          filters:
+            - StripPrefix=0
+        - id: user-service
+          uri: http://localhost:8083
+          predicates:
+            - Path=/user/**,/user/doc.html,/user/v3/api-docs/**,/user/swagger-ui.html,/user/swagger-ui/**,/user/webjars/**
+          filters:
+            - StripPrefix=1
+        - id: user-swagger-static
+          uri: http://localhost:8083
+          predicates:
+            - Path=/doc.html,/v3/api-docs/**,/swagger-ui.html,/swagger-ui/**,/webjars/**
+          filters:
+            - StripPrefix=0
+            - name: Retry
+              args:
+                retries: 2
+                statuses:
+                  - BAD_GATEWAY
+                  - INTERNAL_SERVER_ERROR
+                  - SERVICE_UNAVAILABLE
+                  - GATEWAY_TIMEOUT
+                methods:
+                  - GET
+            - name: CircuitBreaker
+              args:
+                name: userCircuitBreaker
+                fallbackUri: forward:/fallback/user
+        - id: order-swagger-static
+          uri: http://localhost:8084
+          predicates:
+            - Path=/order/doc.html,/order/v3/api-docs/**,/order/swagger-ui.html,/order/swagger-ui/**,/order/webjars/**
+          filters:
+            - StripPrefix=1
+        - id: order-service
+          uri: http://localhost:8084
+          predicates:
+            - Path=/order/**,/order/v3/api-docs/**,/order/swagger-ui.html,/order/swagger-ui/**,/order/webjars/**
+          filters:
+            - StripPrefix=0
+            - name: Retry
+              args:
+                retries: 2
+                statuses:
+                  - BAD_GATEWAY
+                  - INTERNAL_SERVER_ERROR
+                  - SERVICE_UNAVAILABLE
+                  - GATEWAY_TIMEOUT
+                methods:
+                  - GET
+            - name: CircuitBreaker
+              args:
+                name: orderCircuitBreaker
+                fallbackUri: forward:/fallback/order
+        - id: product-swagger-static
+          uri: http://localhost:8085
+          predicates:
+            - Path=/product/doc.html,/product/v3/api-docs/**,/product/swagger-ui.html,/product/swagger-ui/**,/product/webjars/**
+          filters:
+            - StripPrefix=1
+        - id: cart-swagger-static
+          uri: http://localhost:8086
+          predicates:
+            - Path=/cart/doc.html,/cart/v3/api-docs/**,/cart/swagger-ui.html,/cart/swagger-ui/**,/cart/webjars/**
+          filters:
+            - StripPrefix=1
+        - id: stock-swagger-static
+          uri: http://localhost:8087
+          predicates:
+            - Path=/stock/doc.html,/stock/v3/api-docs/**,/stock/swagger-ui.html,/stock/swagger-ui/**,/stock/webjars/**
+          filters:
+            - StripPrefix=1
+        - id: product-service
+          uri: http://localhost:8085
+          predicates:
+            - Path=/product/**,/product/v3/api-docs/**,/product/swagger-ui.html,/product/swagger-ui/**,/product/webjars/**
+          filters:
+            - StripPrefix=1
+            - name: Retry
+              args:
+                retries: 2
+                statuses:
+                  - BAD_GATEWAY
+                  - INTERNAL_SERVER_ERROR
+                  - SERVICE_UNAVAILABLE
+                  - GATEWAY_TIMEOUT
+                methods:
+                  - GET
+            - name: CircuitBreaker
+              args:
+                name: productCircuitBreaker
+                fallbackUri: forward:/fallback/product
+        - id: cart-service
+          uri: http://localhost:8086
+          predicates:
+            - Path=/cart/**,/cart/v3/api-docs/**,/cart/swagger-ui.html,/cart/swagger-ui/**,/cart/webjars/**
+          filters:
+            - StripPrefix=1
+            - name: Retry
+              args:
+                retries: 2
+                statuses:
+                  - BAD_GATEWAY
+                  - INTERNAL_SERVER_ERROR
+                  - SERVICE_UNAVAILABLE
+                  - GATEWAY_TIMEOUT
+                methods:
+                  - GET
+            - name: CircuitBreaker
+              args:
+                name: cartCircuitBreaker
+                fallbackUri: forward:/fallback/cart
+        - id: stock-service
+          uri: http://localhost:8087
+          predicates:
+            - Path=/stock/**,/stock/v3/api-docs/**,/stock/swagger-ui.html,/stock/swagger-ui/**,/stock/webjars/**
+          filters:
+            - StripPrefix=0
+            - name: Retry
+              args:
+                retries: 2
+                statuses:
+                  - BAD_GATEWAY
+                  - INTERNAL_SERVER_ERROR
+                  - SERVICE_UNAVAILABLE
+                  - GATEWAY_TIMEOUT
+                methods:
+                  - GET
+            - name: CircuitBreaker
+              args:
+                name: stockCircuitBreaker
+                fallbackUri: forward:/fallback/stock
+      default-filters:
+        - AddResponseHeader=X-Gateway, nova-mall-gateway
+      local-rate-limit:
+        enabled: false
+        defaults:
+          replenish-rate: 50
+          burst-capacity: 100
+        routes:
+          - id: user-limit
+            match-prefix: /user/
+            replenish-rate: 30
+            burst-capacity: 60
+          - id: order-limit
+            match-prefix: /order/
+            replenish-rate: 20
+            burst-capacity: 40
+  main:
+    web-application-type: reactive
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never
+
+logging:
+  level:
+    com.example.gateway.filter: DEBUG
+

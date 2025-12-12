@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.example</groupId>
+        <artifactId>nova-mail-parent</artifactId>
+        <version>0.0.1-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>nova-mall-user</artifactId>
+    <packaging>pom</packaging>
+    <name>nova-mall-user</name>
+    <description>用户服务父模块</description>
+
+    <modules>
+        <module>nova-mall-user-api</module>
+        <module>nova-mall-user-service</module>
+        <module>nova-mall-user-web</module>
+    </modules>
+
+</project>
+
+
+
