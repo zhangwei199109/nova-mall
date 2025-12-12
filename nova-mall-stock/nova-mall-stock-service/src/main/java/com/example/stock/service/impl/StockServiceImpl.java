@@ -2,16 +2,18 @@ package com.example.stock.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.example.common.exception.BusinessException;
-import com.example.stock.service.StockAppService;
-import com.example.stock.api.dto.StockDTO;
 import com.example.stock.api.dto.StockChangeDTO;
+import com.example.stock.api.dto.StockDTO;
+import com.example.stock.service.StockAppService;
 import com.example.stock.service.entity.Stock;
 import com.example.stock.service.mapper.StockMapper;
+import org.apache.dubbo.config.annotation.DubboService;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@DubboService(version = "1.0.0")
 public class StockServiceImpl implements StockAppService {
 
     private final StockMapper stockMapper;

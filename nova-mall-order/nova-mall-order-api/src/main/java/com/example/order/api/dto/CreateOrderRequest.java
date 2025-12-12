@@ -2,7 +2,6 @@ package com.example.order.api.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
@@ -16,8 +15,7 @@ public class CreateOrderRequest {
     @NotNull(message = "用户ID不能为空")
     private Long userId;
 
-    @Schema(description = "订单项列表", requiredMode = Schema.RequiredMode.REQUIRED)
-    @NotEmpty(message = "订单项不能为空")
+    @Schema(description = "订单项列表；为空则自动读取购物车")
     @Valid
     private List<OrderItemDTO> items;
 }

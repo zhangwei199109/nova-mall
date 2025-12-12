@@ -1,11 +1,12 @@
 package com.example.cart.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.example.cart.service.CartAppService;
 import com.example.cart.api.dto.CartItemDTO;
+import com.example.cart.service.CartAppService;
 import com.example.cart.service.entity.CartItem;
 import com.example.cart.service.mapper.CartItemMapper;
 import com.example.common.exception.BusinessException;
+import org.apache.dubbo.config.annotation.DubboService;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
@@ -14,6 +15,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
+@DubboService(version = "1.0.0")
 public class CartServiceImpl implements CartAppService {
 
     private final CartItemMapper cartItemMapper;

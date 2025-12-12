@@ -5,12 +5,14 @@ import com.example.common.dto.Result;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @Tag(name = "购物车接口")
 @RequestMapping("/cart")
+@FeignClient(name = "cart-service", url = "${service.cart.base-url:http://localhost:8086}")
 public interface CartApi {
 
     @Operation(summary = "查看购物车")

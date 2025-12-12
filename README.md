@@ -32,23 +32,26 @@
 
 ### 一键构建与启动
 ```bash
-# 根目录
-./mvnw clean package -DskipTests
-# 可选：仅对可执行模块 repackage
-./mvnw -DskipTests -pl nova-mall-gateway,nova-mall-user/nova-mall-user-web,nova-mall-order/nova-mall-order-web,nova-mall-product/nova-mall-product-web,nova-mall-cart/nova-mall-cart-web,nova-mall-stock/nova-mall-stock-web spring-boot:repackage
+# 根目录，建议先设 JDK 21
+export JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home
+export PATH="$JAVA_HOME/bin:$PATH"
 
-# 后台启动全部（使用已有 jar）
-./run-all.sh start
-# 停止
-./run-all.sh stop
+mvn clean package -DskipTests
+
+# 后台启动全部（使用 spring-boot:run，日志在 logs/，pid 在 logs/*.pid）
+chmod +x scripts/start-all.sh
+./scripts/start-all.sh
 ```
 
-日志输出在 `logs/`，PID 记录在 `.run-pids/`。
-
-### 手动运行单个服务
+### 手动运行单个服务（jar）
 ```bash
 java -jar nova-mall-user/nova-mall-user-web/target/nova-mall-user-web-0.0.1-SNAPSHOT.jar
 java -jar nova-mall-gateway/target/nova-mall-gateway-0.0.1-SNAPSHOT.jar
+```
+或使用源码启动：
+```bash
+mvn -pl nova-mall-user/nova-mall-user-web spring-boot:run
+mvn -pl nova-mall-gateway spring-boot:run
 ```
 
 ### 验证
@@ -58,7 +61,7 @@ curl -X POST http://localhost:8092/auth/login \
   -H "Content-Type: application/json" \
   -d '{"username":"admin","password":"admin123"}'
 ```
-2) 携带 Token 访问用户列表
+2) 携带 Token 访问用户列表（经网关）
 ```bash
 curl http://localhost:8092/user/list \
   -H "Authorization: Bearer <accessToken>"

@@ -2,10 +2,11 @@ package com.example.product.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.example.common.exception.BusinessException;
-import com.example.product.service.ProductAppService;
 import com.example.product.api.dto.ProductDTO;
+import com.example.product.service.ProductAppService;
 import com.example.product.service.entity.Product;
 import com.example.product.service.mapper.ProductMapper;
+import org.apache.dubbo.config.annotation.DubboService;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 
@@ -13,6 +14,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
+@DubboService(version = "1.0.0")
 public class ProductServiceImpl implements ProductAppService {
 
     private final ProductMapper productMapper;

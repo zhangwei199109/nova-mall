@@ -8,20 +8,17 @@
 ## 五步启动
 1) **编译**
 ```bash
-./mvnw clean package -DskipTests
+mvn clean package -DskipTests
 ```
-2) **可选：repackage 可执行 jar（仅 Web/网关）**
+2) **一键启动全部（后台运行）**
 ```bash
-./mvnw -DskipTests -pl nova-mall-gateway,nova-mall-user/nova-mall-user-web,nova-mall-order/nova-mall-order-web,nova-mall-product/nova-mall-product-web,nova-mall-cart/nova-mall-cart-web,nova-mall-stock/nova-mall-stock-web spring-boot:repackage
-```
-3) **一键启动全部**
-```bash
-./run-all.sh start
+chmod +x scripts/start-all.sh
+./scripts/start-all.sh
 ```
    - 网关：8092
    - 用户：8083，订单：8084，商品：8085，购物车：8086，库存：8087
-   - 日志：`logs/`，PID：`.run-pids/`
-4) **验证**
+   - 日志/ PID：`logs/` 下的 `*.log` / `*.pid`
+3) **验证**
 ```bash
 # 登录获取 token（默认账户：admin/admin123 或 user/user123）
 curl -X POST http://localhost:8092/auth/login \
@@ -36,13 +33,17 @@ curl http://localhost:8092/user/list -H "Authorization: Bearer <token>"
 # 购物车 http://localhost:8092/cart/doc.html
 # 库存 http://localhost:8092/stock/doc.html
 ```
-5) **停止**
+4) **停止（如需）**
 ```bash
-./run-all.sh stop
+for f in logs/*.pid; do [ -f "$f" ] && kill $(cat "$f") 2>/dev/null || true; done
 ```
 
 ## 手工启动某个服务
 ```bash
+# 源码方式
+mvn -pl nova-mall-user/nova-mall-user-web spring-boot:run
+mvn -pl nova-mall-gateway spring-boot:run
+# 或运行已打包 jar
 java -jar nova-mall-user/nova-mall-user-web/target/nova-mall-user-web-0.0.1-SNAPSHOT.jar
 java -jar nova-mall-gateway/target/nova-mall-gateway-0.0.1-SNAPSHOT.jar
 ```

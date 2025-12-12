@@ -38,6 +38,7 @@
 		<mysql.version>8.0.33</mysql.version>
 		<lombok.version>1.18.34</lombok.version>
 		<jjwt.version>0.12.5</jjwt.version>
+		<dubbo.version>3.2.11</dubbo.version>
 		<maven-surefire.version>3.2.5</maven-surefire.version>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 	</properties>
@@ -120,6 +121,12 @@
 				<groupId>com.mysql</groupId>
 				<artifactId>mysql-connector-j</artifactId>
 				<version>${mysql.version}</version>
+			</dependency>
+			<!-- Dubbo -->
+			<dependency>
+				<groupId>org.apache.dubbo</groupId>
+				<artifactId>dubbo-spring-boot-starter</artifactId>
+				<version>${dubbo.version}</version>
 			</dependency>
 		</dependencies>
 	</dependencyManagement>

@@ -1,354 +1,61 @@
-# 分层模块化架构说明
+# nova-mall 架构说明
 
-## 架构设计
-
-本项目采用**经典的分层架构模式**，将应用分为四个独立的模块，每个模块都有明确的职责和边界。
+## 总体设计
+- 多模块多域：用户、订单、商品、购物车、库存各自独立 API / Service / Web。
+- 统一入口：Spring Cloud Gateway（8092）负责路由、JWT 鉴权、白名单、重试、熔断、CORS。
+- 分层模式：common（公共）→ domain-api（契约）→ domain-service（业务/持久化）→ domain-web（接口/启动）。
+- 数据层：默认 H2 内存库（MySQL 兼容），MyBatis Plus 负责 CRUD、逻辑删除和 SQL 日志。
 
 ## 架构图
-
 ```
-┌─────────────────────────────────────────────────────┐
-│                   demo-web (Web层)                   │
-│  - Controller (HTTP请求处理)                         │
-│  - 启动类                                             │
-│  - 端口: 8080                                        │
-└──────────────────────┬──────────────────────────────┘
-                       │ 依赖
-                       ↓
-┌─────────────────────────────────────────────────────┐
-│                demo-service (业务层)                 │
-│  - Service 接口实现                                  │
-│  - 业务逻辑处理                                       │
-│  - Entity (领域模型)                                 │
-│  - DTO ↔ Entity 转换                                │
-└──────────────────────┬──────────────────────────────┘
-                       │ 依赖
-                       ↓
-┌─────────────────────────────────────────────────────┐
-│                 demo-api (接口定义层)                │
-│  - Service 接口定义                                  │
-│  - DTO (数据传输对象)                                │
-│  - VO (视图对象)                                     │
-│  - Result<T> (统一响应)                              │
-└──────────────────────┬──────────────────────────────┘
-                       │ 依赖
-                       ↓
-┌─────────────────────────────────────────────────────┐
-│                demo-common (公共层)                  │
-│  - 工具类 (Util)                                     │
-│  - 常量 (Constant)                                   │
-│  - 异常 (Exception)                                  │
-│  - 无 Spring 依赖                                    │
-└─────────────────────────────────────────────────────┘
+             ┌────────────────────────┐
+             │   nova-mall-gateway    │ 8092
+             └─────────▲──────────────┘
+                       │ 路由+鉴权
+        ┌──────────────┴────────────────────────────────┐
+        │              │              │                  │              │
+   user-web        order-web      product-web       cart-web       stock-web
+   (8083)          (8084)         (8085)            (8086)         (8087)
+        ▲              ▲              ▲                  ▲              ▲
+   user-service   order-service   product-service   cart-service   stock-service
+        ▲              ▲              ▲                  ▲              ▲
+   user-api        order-api      product-api       cart-api       stock-api
+        └─────────────────────────┬───────────────────────────────┘
+                         nova-mall-common
 ```
 
-## 模块详解
+## 模块职责
+- `nova-mall-common`：公共 DTO、异常、工具，无 Spring 依赖。
+- `*-api`：领域接口与 DTO 契约，不含实现。
+- `*-service`：业务实现、实体与 Mapper、事务与校验。
+- `*-web`：Controller、参数/权限校验、OpenAPI 文档、启动入口。
+- `nova-mall-gateway`：JWT 校验、路径路由、重试/熔断、白名单、可选本地限流。
 
-### demo-common（公共基础模块）
+## 端口与路由前缀
+- 网关：8092
+- 用户：8083（`/auth/**`, `/user/**`）
+- 订单：8084（`/order/**`）
+- 商品：8085（`/product/**`）
+- 购物车：8086（`/cart/**`）
+- 库存：8087（`/stock/**`）
+网关按前缀路由并做 JWT 校验，文档与静态资源已加入白名单；各 OpenAPI 已声明 Bearer 安全方案，Knife4j 点击 “Authorize” 后示例调用会带上 `Authorization: Bearer <token>`。
 
-**定位**: 最底层的工具模块
+## 数据与初始化
+- 默认 H2 内存库，URL 形如 `jdbc:h2:mem:userdb;MODE=MySQL;...`，控制台 `/h2-console` 直连对应端口。
+- 切换 MySQL：修改各 Web `application.yaml` 数据源，执行对应 `resources/db/init.sql`。
+- MyBatis Plus：开启驼峰映射、SQL 日志、逻辑删除字段 `deleted`。
 
-**特点**:
-- ✅ 无 Spring 依赖，纯 Java 实现
-- ✅ 无业务逻辑
-- ✅ 可被任何项目复用
-- ✅ 体积小，加载快
+## 请求链路示例
+1. 客户端调用 `/auth/login`（网关 → 用户服务）获取 JWT。
+2. 随后请求携带 `Authorization: Bearer <token>` 访问网关。
+3. 网关验证签名/白名单后路由到目标 Web。
+4. Web 层做参数校验与授权，调用 Service + MyBatis Plus，返回统一 `Result<T>`。
 
-**包含内容**:
-```
-com.example.common
-├── constant/
-│   └── CommonConstant.java        # 公共常量
-├── exception/
-│   └── BusinessException.java     # 业务异常
-└── util/
-    └── StringUtil.java            # 字符串工具
-```
+## 演进方向
+- 将内存用户迁移到数据库或外部 IAM，完善密码加盐策略。
+- 引入 MySQL/Redis，构建订单-库存-商品的事务/补偿或事件链路。
+- 增加监控与追踪（Actuator/Prometheus/Zipkin）。
+- 前端聚合或 API 文档聚合改进。
 
-**使用场景**:
-- 工具方法调用
-- 常量引用
-- 异常抛出
 
-**示例**:
-```java
-// 使用工具类
-if (StringUtil.isEmpty(username)) {
-    throw new BusinessException("用户名不能为空");
-}
 
-// 使用常量
-int code = CommonConstant.SUCCESS_CODE;
-```
-
----
-
-### demo-api（接口定义模块）
-
-**定位**: 接口契约层
-
-**特点**:
-- ✅ 只定义接口，不包含实现
-- ✅ 定义数据传输格式（DTO）
-- ✅ 面向接口编程
-- ✅ 可作为客户端 SDK
-
-**包含内容**:
-```
-com.example.api
-├── dto/
-│   ├── Result.java               # 统一响应封装
-│   └── UserDTO.java              # 用户DTO
-├── vo/
-│   └── (视图对象)
-└── service/
-    └── UserService.java          # 用户服务接口
-```
-
-**设计原则**:
-- **接口隔离**: 每个接口职责单一
-- **依赖倒置**: 依赖抽象而非具体实现
-- **开闭原则**: 对扩展开放，对修改关闭
-
-**示例**:
-```java
-// 定义接口
-public interface UserService {
-    UserDTO getUserById(Long id);
-    List<UserDTO> getAllUsers();
-}
-
-// 定义 DTO
-@Data
-public class UserDTO {
-    private Long id;
-    private String username;
-    private String email;
-}
-```
-
----
-
-### demo-service（业务服务模块）
-
-**定位**: 业务逻辑层
-
-**特点**:
-- ✅ 实现 API 模块中的接口
-- ✅ 包含核心业务逻辑
-- ✅ 定义领域模型（Entity）
-- ✅ 不依赖 Web 技术
-
-**包含内容**:
-```
-com.example.service
-├── entity/
-│   └── User.java                 # 用户实体（领域模型）
-└── impl/
-    └── UserServiceImpl.java      # 用户服务实现
-```
-
-**职责**:
-1. **业务逻辑处理**: 数据验证、业务规则
-2. **数据访问**: 与数据库/缓存交互
-3. **DTO 转换**: Entity ↔ DTO 转换
-4. **事务管理**: 使用 @Transactional
-
-**示例**:
-```java
-@Service
-public class UserServiceImpl implements UserService {
-    
-    @Override
-    public UserDTO getUserById(Long id) {
-        User user = userStore.get(id);
-        return entityToDTO(user);  // Entity 转 DTO
-    }
-    
-    private UserDTO entityToDTO(User user) {
-        return new UserDTO(user.getId(), user.getUsername(), ...);
-    }
-}
-```
-
-**为什么需要 Entity 和 DTO 分离？**
-- Entity: 面向数据库，包含持久化注解
-- DTO: 面向传输，轻量级，只包含必要字段
-- 避免数据库结构直接暴露给外部
-
----
-
-### demo-web（Web 表现层）
-
-**定位**: HTTP 请求处理层
-
-**特点**:
-- ✅ 唯一可执行的模块
-- ✅ Controller 处理 HTTP 请求
-- ✅ 启动类在此模块
-- ✅ 依赖所有下层模块
-
-**包含内容**:
-```
-com.example.web
-├── controller/
-│   └── UserController.java       # 用户控制器
-└── DemoWebApplication.java       # 启动类
-```
-
-**职责**:
-1. **HTTP 请求处理**: 接收和响应 HTTP 请求
-2. **参数验证**: 验证请求参数
-3. **异常处理**: 统一异常处理
-4. **响应封装**: 返回统一格式
-
-**示例**:
-```java
-@RestController
-@RequestMapping("/user")
-public class UserController {
-    
-    @Autowired
-    private UserService userService;  // 依赖接口
-    
-    @GetMapping("/list")
-    public Result<List<UserDTO>> getAllUsers() {
-        List<UserDTO> users = userService.getAllUsers();
-        return Result.success(users);
-    }
-}
-```
-
-## 数据流转
-
-### 请求流程
-```
-HTTP请求
-    ↓
-Controller (Web层)
-    ↓
-Service接口调用 (API层定义)
-    ↓
-ServiceImpl实现 (Service层)
-    ↓
-Entity操作 (Service层)
-    ↓
-DTO转换
-    ↓
-返回DTO (API层)
-    ↓
-Result封装 (API层)
-    ↓
-HTTP响应
-```
-
-### 示例：获取用户
-
-```
-1. 客户端: GET /user/1
-2. UserController.getUserById(1)
-3. userService.getUserById(1)        // 调用接口
-4. UserServiceImpl.getUserById(1)    // 执行实现
-5. User entity = userStore.get(1)    // 获取Entity
-6. UserDTO dto = entityToDTO(entity) // 转换为DTO
-7. Result.success(dto)               // 封装响应
-8. 返回 JSON: {"code":200,"message":"success","data":{...}}
-```
-
-## 测试策略
-
-### 单元测试
-
-```java
-// 测试 Common 层
-@Test
-void testStringUtil() {
-    assertTrue(StringUtil.isEmpty(""));
-}
-
-// 测试 Service 层（无需启动容器）
-@Test
-void testUserService() {
-    UserService service = new UserServiceImpl();
-    UserDTO user = service.getUserById(1L);
-    assertNotNull(user);
-}
-
-// 测试 Web 层
-@SpringBootTest
-@AutoConfigureMockMvc
-class UserControllerTest {
-    @Autowired
-    private MockMvc mockMvc;
-    
-    @Test
-    void testGetUser() throws Exception {
-        mockMvc.perform(get("/user/1"))
-               .andExpect(status().isOk());
-    }
-}
-```
-
-## 后续演进
-
-### 1. 微服务化
-```
-demo-common    → 公共 SDK
-demo-api       → 服务契约
-demo-service   → 用户服务
-demo-web       → API 网关 / 另一个服务的 Web 层
-```
-
-### 2. 领域驱动设计（DDD）
-```
-demo-common    → 基础设施层
-demo-api       → 应用层接口
-demo-service   → 领域层 + 应用层实现
-demo-web       → 接口层
-```
-
-### 3. 集成更多技术
-
-**数据层**:
-- MyBatis / JPA
-- MySQL / PostgreSQL
-- Redis 缓存
-
-**安全层**:
-- Spring Security
-- JWT 认证
-
-**文档层**:
-- Knife4j / Swagger
-- API 自动文档
-
-**监控层**:
-- Spring Boot Actuator
-- Prometheus + Grafana
-
-## 性能优化
-
-1. **编译性能**: 模块化后可并行编译
-2. **部署灵活**: 只部署变更的模块
-3. **依赖管理**: 避免依赖冗余
-4. **职责分离**: 易于性能调优
-
-## 总结
-
-这是一个**标准的分层模块化架构**：
-
-| 层次 | 模块 | 职责 | 依赖 |
-|------|------|------|------|
-| 公共层 | demo-common | 工具、常量 | 无 |
-| 接口层 | demo-api | 接口定义、DTO | common |
-| 业务层 | demo-service | 业务实现、Entity | api |
-| 表现层 | demo-web | Controller、启动类 | service |
-
-**架构优势**:
-- 🎯 职责清晰，易于维护
-- 🔄 松耦合，易于扩展
-- 🧪 可测试性强
-- 🚀 可重用性高
-- 📦 便于模块化部署
-
-适合作为企业级应用的标准架构模板！

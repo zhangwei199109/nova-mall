@@ -9,6 +9,9 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+import org.springframework.cloud.openfeign.FeignClient;
+
+@FeignClient(name = "product-service", url = "${service.product.base-url:http://localhost:8085}")
 @Tag(name = "商品接口")
 @RequestMapping("/product")
 public interface ProductApi {
