@@ -43,18 +43,6 @@ knife4j:
   setting:
     language: zh_cn
 
-# Dubbo 配置
-dubbo:
-  application:
-    name: nova-mall-cart-web
-  registry:
-    address: nacos://127.0.0.1:8848
-  protocol:
-    name: dubbo
-    port: 20886
-  provider:
-    timeout: 5000
-
 h2:
   console:
     enabled: true

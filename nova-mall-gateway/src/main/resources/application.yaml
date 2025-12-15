@@ -75,6 +75,27 @@ spring:
             allowedHeaders: "*"
             allowCredentials: false
       routes:
+        # 用户文档（优先匹配，StripPrefix 去掉 /user）
+        - id: user-swagger-static-prefix
+          uri: http://localhost:8083
+          predicates:
+            - Path=/user/doc.html,/user/v3/api-docs/**,/user/swagger-ui.html,/user/swagger-ui/**,/user/webjars/**
+          filters:
+            - StripPrefix=1
+            - name: Retry
+              args:
+                retries: 2
+                statuses:
+                  - BAD_GATEWAY
+                  - INTERNAL_SERVER_ERROR
+                  - SERVICE_UNAVAILABLE
+                  - GATEWAY_TIMEOUT
+                methods:
+                  - GET
+            - name: CircuitBreaker
+              args:
+                name: userCircuitBreakerPrefixed
+                fallbackUri: forward:/fallback/user
         - id: user-auth
           uri: http://localhost:8083
           predicates:
@@ -86,7 +107,8 @@ spring:
           predicates:
             - Path=/user/**,/user/doc.html,/user/v3/api-docs/**,/user/swagger-ui.html,/user/swagger-ui/**,/user/webjars/**
           filters:
-            - StripPrefix=1
+            # 保留 /user 前缀转发到下游（下游接口路径以 /user 开头）
+            - StripPrefix=0
         - id: user-swagger-static
           uri: http://localhost:8083
           predicates:

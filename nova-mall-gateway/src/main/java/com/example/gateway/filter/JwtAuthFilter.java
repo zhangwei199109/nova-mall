@@ -19,9 +19,7 @@ import reactor.core.publisher.Mono;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.time.Instant;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import java.nio.charset.StandardCharsets;
 
@@ -75,7 +73,12 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
         String userId = claims.get("uid", String.class);
         String username = claims.get("name", String.class);
         Object rolesObj = claims.get("roles");
-        String roles = rolesObj == null ? "" : rolesObj.toString();
+        String roles = "";
+        if (rolesObj instanceof List<?> list) {
+            roles = String.join(",", list.stream().map(Object::toString).toList());
+        } else if (rolesObj != null) {
+            roles = rolesObj.toString();
+        }
         String jti = claims.getId();
         if (StringUtils.isNotBlank(jti) && tokenBlacklist.isBlacklisted(jti)) {
             return unauthorized(exchange, traceId, "Token 已失效，请重新登录");

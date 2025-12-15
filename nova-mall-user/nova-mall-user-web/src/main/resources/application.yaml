@@ -15,6 +15,10 @@ spring:
       connection-timeout: 30000
       idle-timeout: 600000
       max-lifetime: 1800000
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:/db/init.sql
 
 mybatis-plus:
   configuration:

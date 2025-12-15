@@ -4,6 +4,7 @@
 - 多域拆分：用户、订单、商品、购物车、库存各自独立 API/Service/Web 模块。
 - 统一网关：Spring Cloud Gateway 8092，负责路由、JWT 鉴权、白名单、重试、熔断，可选本地限流。
 - 认证与授权：用户服务内置简单账户（admin/user），发放 JWT，网关与各 Web 层基于角色保护接口。
+- 远程调用：统一使用 OpenFeign，已移除 Dubbo 依赖。
 - 文档与调试：各服务启用 Springdoc + Knife4j，可通过网关聚合访问。
 - 数据访问：MyBatis Plus + H2 内存库（MySQL 兼容），提供 init.sql 便于切换 MySQL。
 - 统一返回：`com.example.common.dto.Result` 统一响应格式，全局异常处理兜底。
