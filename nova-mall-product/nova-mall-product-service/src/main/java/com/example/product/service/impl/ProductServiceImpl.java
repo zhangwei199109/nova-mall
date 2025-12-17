@@ -4,9 +4,9 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.example.common.exception.BusinessException;
 import com.example.product.api.dto.ProductDTO;
 import com.example.product.service.ProductAppService;
+import com.example.product.service.convert.ProductConvert;
 import com.example.product.service.entity.Product;
 import com.example.product.service.mapper.ProductMapper;
-import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -16,15 +16,17 @@ import java.util.stream.Collectors;
 public class ProductServiceImpl implements ProductAppService {
 
     private final ProductMapper productMapper;
+    private final ProductConvert productConvert;
 
-    public ProductServiceImpl(ProductMapper productMapper) {
+    public ProductServiceImpl(ProductMapper productMapper, ProductConvert productConvert) {
         this.productMapper = productMapper;
+        this.productConvert = productConvert;
     }
 
     @Override
     public List<ProductDTO> listProducts() {
         List<Product> list = productMapper.selectList(new LambdaQueryWrapper<>());
-        return list.stream().map(this::toDTO).collect(Collectors.toList());
+        return list.stream().map(productConvert::toDTO).collect(Collectors.toList());
     }
 
     @Override
@@ -33,16 +35,15 @@ public class ProductServiceImpl implements ProductAppService {
         if (p == null) {
             throw new BusinessException(404, "商品不存在");
         }
-        return toDTO(p);
+        return productConvert.toDTO(p);
     }
 
     @Override
     public ProductDTO create(ProductDTO dto) {
-        Product entity = new Product();
-        BeanUtils.copyProperties(dto, entity);
+        Product entity = productConvert.toEntity(dto);
         entity.setId(null);
         productMapper.insert(entity);
-        return toDTO(productMapper.selectById(entity.getId()));
+        return productConvert.toDTO(productMapper.selectById(entity.getId()));
     }
 
     @Override
@@ -54,9 +55,9 @@ public class ProductServiceImpl implements ProductAppService {
         if (exist == null) {
             throw new BusinessException(404, "商品不存在");
         }
-        BeanUtils.copyProperties(dto, exist);
+        productConvert.updateEntity(dto, exist);
         productMapper.updateById(exist);
-        return toDTO(productMapper.selectById(dto.getId()));
+        return productConvert.toDTO(productMapper.selectById(dto.getId()));
     }
 
     @Override
@@ -65,12 +66,6 @@ public class ProductServiceImpl implements ProductAppService {
             throw new BusinessException(404, "商品不存在");
         }
         return productMapper.deleteById(id) > 0;
-    }
-
-    private ProductDTO toDTO(Product p) {
-        ProductDTO dto = new ProductDTO();
-        BeanUtils.copyProperties(p, dto);
-        return dto;
     }
 }
 

@@ -3,10 +3,10 @@ package com.example.cart.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.example.cart.api.dto.CartItemDTO;
 import com.example.cart.service.CartAppService;
+import com.example.cart.service.convert.CartConvert;
 import com.example.cart.service.entity.CartItem;
 import com.example.cart.service.mapper.CartItemMapper;
 import com.example.common.exception.BusinessException;
-import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 
@@ -17,9 +17,11 @@ import java.util.stream.Collectors;
 public class CartServiceImpl implements CartAppService {
 
     private final CartItemMapper cartItemMapper;
+    private final CartConvert cartConvert;
 
-    public CartServiceImpl(CartItemMapper cartItemMapper) {
+    public CartServiceImpl(CartItemMapper cartItemMapper, CartConvert cartConvert) {
         this.cartItemMapper = cartItemMapper;
+        this.cartConvert = cartConvert;
     }
 
     @Override
@@ -41,8 +43,7 @@ public class CartServiceImpl implements CartAppService {
             cartItemMapper.updateById(existing);
             return toDTO(existing);
         }
-        CartItem entity = new CartItem();
-        BeanUtils.copyProperties(item, entity);
+        CartItem entity = cartConvert.toEntity(item);
         entity.setUserId(uid);
         cartItemMapper.insert(entity);
         return toDTO(cartItemMapper.selectById(entity.getId()));
@@ -84,9 +85,7 @@ public class CartServiceImpl implements CartAppService {
     }
 
     private CartItemDTO toDTO(CartItem item) {
-        CartItemDTO dto = new CartItemDTO();
-        BeanUtils.copyProperties(item, dto);
-        return dto;
+        return cartConvert.toDTO(item);
     }
 
     private String normalizeUser(String userId) {

@@ -5,6 +5,7 @@ import com.example.stock.api.StockApi;
 import com.example.stock.service.StockAppService;
 import com.example.stock.api.dto.StockDTO;
 import com.example.stock.api.dto.StockChangeDTO;
+import com.example.stock.web.convert.StockWebConvert;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -12,9 +13,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class StockController implements StockApi {
 
     private final StockAppService stockAppService;
+    private final StockWebConvert stockWebConvert;
 
-    public StockController(StockAppService stockAppService) {
+    public StockController(StockAppService stockAppService, StockWebConvert stockWebConvert) {
         this.stockAppService = stockAppService;
+        this.stockWebConvert = stockWebConvert;
     }
 
     @Override
@@ -24,17 +27,17 @@ public class StockController implements StockApi {
 
     @Override
     public Result<Boolean> reserve(@Valid StockChangeDTO dto) {
-        return Result.success(stockAppService.reserve(dto));
+        return Result.success(stockAppService.reserve(stockWebConvert.toChangeDto(dto)));
     }
 
     @Override
     public Result<Boolean> release(@Valid StockChangeDTO dto) {
-        return Result.success(stockAppService.release(dto));
+        return Result.success(stockAppService.release(stockWebConvert.toChangeDto(dto)));
     }
 
     @Override
     public Result<Boolean> deduct(@Valid StockChangeDTO dto) {
-        return Result.success(stockAppService.deduct(dto));
+        return Result.success(stockAppService.deduct(stockWebConvert.toChangeDto(dto)));
     }
 }
 

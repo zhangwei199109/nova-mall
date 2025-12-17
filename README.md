@@ -23,6 +23,7 @@
 - Springdoc + Knife4j：各服务提供 OpenAPI 文档，可通过网关聚合访问。
 - MyBatis Plus + H2：按领域分表，内存数据库即开即用；提供初始化 SQL 便于切换 MySQL。
 - 分层模块化：common → domain API → domain service → domain web，接口与实现解耦。
+- MapStruct：Service/Web 层统一用 Mapper 完成 DTO/实体/VO 映射，替代 BeanUtils 以获得更好的类型安全与性能。
 
 ## 快速开始
 

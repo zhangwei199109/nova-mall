@@ -4,6 +4,7 @@ import com.example.common.dto.Result;
 import com.example.order.api.OrderApi;
 import com.example.order.api.dto.CreateOrderRequest;
 import com.example.order.api.dto.OrderDTO;
+import com.example.order.web.convert.OrderWebConvert;
 import com.example.order.service.OrderAppService;
 import jakarta.validation.Valid;
 import org.springframework.validation.annotation.Validated;
@@ -19,9 +20,11 @@ import java.util.List;
 public class OrderController implements OrderApi {
 
     private final OrderAppService orderService;
+    private final OrderWebConvert orderWebConvert;
 
-    public OrderController(OrderAppService orderService) {
+    public OrderController(OrderAppService orderService, OrderWebConvert orderWebConvert) {
         this.orderService = orderService;
+        this.orderWebConvert = orderWebConvert;
     }
 
     @Override
@@ -41,7 +44,7 @@ public class OrderController implements OrderApi {
     @Override
     public Result<OrderDTO> create(@RequestHeader(value = "Idempotency-Key", required = false) String idemKey,
                                    @Valid @RequestBody CreateOrderRequest req) {
-        return Result.success(orderService.createOrder(idemKey, req));
+        return Result.success(orderService.createOrder(idemKey, orderWebConvert.toCreateRequest(req)));
     }
 
     @Override

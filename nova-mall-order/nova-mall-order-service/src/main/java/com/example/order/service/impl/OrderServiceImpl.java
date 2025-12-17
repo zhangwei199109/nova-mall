@@ -8,6 +8,7 @@ import com.example.common.exception.BusinessException;
 import com.example.order.api.dto.CreateOrderRequest;
 import com.example.order.api.dto.OrderDTO;
 import com.example.order.api.dto.OrderItemDTO;
+import com.example.order.service.convert.OrderConvert;
 import com.example.order.service.OrderAppService;
 import com.example.order.service.entity.Order;
 import com.example.order.service.entity.OrderItem;
@@ -36,6 +37,7 @@ public class OrderServiceImpl implements OrderAppService {
 
     private final OrderMapper orderMapper;
     private final OrderItemMapper orderItemMapper;
+    private final OrderConvert orderConvert;
     private final ProductApi productApi;
     private final StockApi stockApi;
     private final CartApi cartApi;
@@ -47,11 +49,13 @@ public class OrderServiceImpl implements OrderAppService {
 
     public OrderServiceImpl(OrderMapper orderMapper,
                             OrderItemMapper orderItemMapper,
+                            OrderConvert orderConvert,
                             ProductApi productApi,
                             StockApi stockApi,
                             CartApi cartApi) {
         this.orderMapper = orderMapper;
         this.orderItemMapper = orderItemMapper;
+        this.orderConvert = orderConvert;
         this.productApi = productApi;
         this.stockApi = stockApi;
         this.cartApi = cartApi;
@@ -116,12 +120,12 @@ public class OrderServiceImpl implements OrderAppService {
     @Override
     @Transactional
     public OrderDTO create(CreateOrderRequest req, OrderDTO computed) {
-        Order order = toEntity(computed);
+        Order order = orderConvert.toEntity(computed);
         orderMapper.insert(order);
         Long orderId = order.getId();
         if (computed.getItems() != null) {
             List<OrderItem> items = computed.getItems().stream()
-                    .map(i -> toItemEntity(orderId, i))
+                    .map(i -> orderConvert.toItemEntity(i, orderId))
                     .toList();
             items.forEach(orderItemMapper::insert);
         }
@@ -254,43 +258,10 @@ public class OrderServiceImpl implements OrderAppService {
     }
 
     private OrderDTO toDTO(Order order) {
-        OrderDTO dto = new OrderDTO();
-        dto.setId(order.getId());
-        dto.setOrderNo(order.getOrderNo());
-        dto.setUserId(order.getUserId());
-        dto.setAmount(order.getAmount());
-        dto.setStatus(order.getStatus());
+        OrderDTO dto = orderConvert.toDTO(order);
         List<OrderItem> items = orderItemMapper.selectList(new LambdaQueryWrapper<OrderItem>()
                 .eq(OrderItem::getOrderId, order.getId()));
-        dto.setItems(items.stream().map(this::toItemDTO).collect(Collectors.toList()));
-        return dto;
-    }
-
-    private Order toEntity(OrderDTO dto) {
-        Order order = new Order();
-        order.setOrderNo(dto.getOrderNo());
-        order.setUserId(dto.getUserId());
-        order.setAmount(dto.getAmount());
-        order.setStatus(dto.getStatus());
-        return order;
-    }
-
-    private OrderItem toItemEntity(Long orderId, OrderItemDTO dto) {
-        OrderItem item = new OrderItem();
-        item.setOrderId(orderId);
-        item.setProductId(dto.getProductId());
-        item.setProductName(dto.getProductName());
-        item.setPrice(dto.getPrice());
-        item.setQuantity(dto.getQuantity());
-        return item;
-    }
-
-    private OrderItemDTO toItemDTO(OrderItem item) {
-        OrderItemDTO dto = new OrderItemDTO();
-        dto.setProductId(item.getProductId());
-        dto.setProductName(item.getProductName());
-        dto.setPrice(item.getPrice());
-        dto.setQuantity(item.getQuantity());
+        dto.setItems(orderConvert.toItemDTOs(items));
         return dto;
     }
 }
