@@ -28,12 +28,12 @@
 ## 快速开始
 
 ### 环境
-- JDK 21+
+- JDK 21+（必须使用 JDK21，否则 Spring Boot 3 插件会因 class 版本报错）
 - Maven 3.9+
 
 ### 一键构建与启动
 ```bash
-# 根目录，建议先设 JDK 21
+# 根目录，必须先设 JDK 21（IDEA 运行 Maven 也需指定 JDK21）
 export JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home
 export PATH="$JAVA_HOME/bin:$PATH"
 
@@ -43,6 +43,8 @@ mvn clean package -DskipTests
 chmod +x scripts/start-all.sh
 ./scripts/start-all.sh
 ```
+
+> IDE/Maven Runner 提示：在 IntelliJ IDEA 的 Maven Runner/Project SDK 中同样选择 JDK21，避免使用系统 JDK8 导致构建失败。 
 
 ### 手动运行单个服务（jar）
 ```bash

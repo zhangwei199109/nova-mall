@@ -3,6 +3,8 @@ target/
 .mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/
+# MapStruct 生成代码
+**/target/generated-sources/annotations/
 
 ### STS ###
 .apt_generated
