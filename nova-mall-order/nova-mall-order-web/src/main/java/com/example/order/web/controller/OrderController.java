@@ -1,8 +1,10 @@
 package com.example.order.web.controller;
 
+import com.example.common.dto.PageParam;
 import com.example.common.dto.PageResult;
 import com.example.common.dto.Result;
 import com.example.common.exception.BusinessException;
+import com.example.common.web.AuthContext;
 import com.example.order.api.OrderApi;
 import com.example.order.api.dto.CreateOrderRequest;
 import com.example.order.api.dto.OrderDTO;
@@ -14,18 +16,18 @@ import org.springframework.web.bind.annotation.RestController;
 public class OrderController implements OrderApi {
 
     private final OrderAppService orderAppService;
-    private final com.example.order.web.util.AuthContext authContext;
+    private final AuthContext authContext;
 
     public OrderController(OrderAppService orderAppService,
-                           com.example.order.web.util.AuthContext authContext) {
+                           AuthContext authContext) {
         this.orderAppService = orderAppService;
         this.authContext = authContext;
     }
 
     @Override
-    public Result<PageResult<OrderDTO>> list(Integer pageNo, Integer pageSize) {
+    public Result<PageResult<OrderDTO>> list(PageParam pageParam) {
         Long userId = authContext.currentUserId();
-        return Result.success(orderAppService.list(userId, pageNo, pageSize));
+        return Result.success(orderAppService.list(userId, pageParam));
     }
 
     @Override

@@ -3,6 +3,7 @@ package com.example.order.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.example.common.dto.PageParam;
 import com.example.common.dto.PageResult;
 import com.example.common.exception.BusinessException;
 import com.example.order.api.dto.CreateOrderRequest;
@@ -44,13 +45,12 @@ public class OrderServiceImpl implements OrderAppService {
     }
 
     @Override
-    public PageResult<OrderDTO> list(Long userId, Integer pageNo, Integer pageSize) {
+    public PageResult<OrderDTO> list(Long userId, PageParam pageParam) {
         if (userId == null) {
             throw new BusinessException(400, "用户ID不能为空");
         }
-        int page = (pageNo == null || pageNo < 1) ? 1 : pageNo;
-        int size = (pageSize == null || pageSize < 1 || pageSize > 100) ? 20 : pageSize;
-        Page<Order> mpPage = new Page<>(page, size);
+        PageParam normalized = (pageParam == null ? new PageParam() : pageParam).normalized(1, 20, 100);
+        Page<Order> mpPage = new Page<>(normalized.getPageNo(), normalized.getPageSize());
         Page<Order> result = orderMapper.selectPage(mpPage, new LambdaQueryWrapper<Order>()
                 .eq(Order::getUserId, userId)
                 .orderByDesc(Order::getId));
@@ -123,7 +123,7 @@ public class OrderServiceImpl implements OrderAppService {
         if (computed.getItems() != null) {
             List<OrderItem> items = computed.getItems().stream()
                     .map(i -> toItemEntity(orderId, i))
-                    .collect(Collectors.toList());
+                    .toList();
             items.forEach(orderItemMapper::insert);
         }
         return getById(order.getId(), order.getUserId());

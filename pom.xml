@@ -19,6 +19,7 @@
 	
 	<modules>
 		<module>nova-mall-common</module>
+        <module>nova-mall-common-web</module>
 		<module>nova-mall-gateway</module>
 		<module>nova-mall-order</module>
 		<module>nova-mall-user</module>

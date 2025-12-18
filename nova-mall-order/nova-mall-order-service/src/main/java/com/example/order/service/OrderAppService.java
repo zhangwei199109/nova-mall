@@ -6,7 +6,7 @@ import com.example.order.api.dto.OrderDTO;
 
 public interface OrderAppService {
 
-    PageResult<OrderDTO> list(Long userId, Integer pageNo, Integer pageSize);
+    PageResult<OrderDTO> list(Long userId, com.example.common.dto.PageParam pageParam);
 
     OrderDTO getById(Long id, Long userId);
 

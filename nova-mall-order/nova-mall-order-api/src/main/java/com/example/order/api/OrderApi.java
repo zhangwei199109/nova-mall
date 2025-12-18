@@ -1,5 +1,6 @@
 package com.example.order.api;
 
+import com.example.common.dto.PageParam;
 import com.example.common.dto.PageResult;
 import com.example.common.dto.Result;
 import com.example.order.api.dto.CreateOrderRequest;
@@ -15,8 +16,7 @@ public interface OrderApi {
 
     @Operation(summary = "订单列表（按当前用户分页）")
     @GetMapping("/list")
-    Result<PageResult<OrderDTO>> list(@RequestParam(defaultValue = "1") Integer pageNo,
-                                      @RequestParam(defaultValue = "20") Integer pageSize);
+    Result<PageResult<OrderDTO>> list(@ModelAttribute PageParam pageParam);
 
     @Operation(summary = "订单详情")
     @GetMapping("/{id}")
