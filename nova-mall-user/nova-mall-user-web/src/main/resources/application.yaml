@@ -3,7 +3,7 @@ server:
 
 spring:
   application:
-    name: nova-mall-user-web
+    name: demo-user-web
   datasource:
     driver-class-name: org.h2.Driver
     url: jdbc:h2:mem:userdb;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
@@ -15,10 +15,6 @@ spring:
       connection-timeout: 30000
       idle-timeout: 600000
       max-lifetime: 1800000
-  sql:
-    init:
-      mode: always
-      schema-locations: classpath:/db/init.sql
 
 mybatis-plus:
   configuration:
@@ -39,18 +35,13 @@ springdoc:
   swagger-ui:
     enabled: true
     path: /swagger-ui.html
-    url: ./v3/api-docs
-    config-url: ./v3/api-docs/swagger-config
+    url: /user/v3/api-docs
+    config-url: /user/v3/api-docs/swagger-config
 
 knife4j:
   enable: true
   setting:
     language: zh_cn
-
-jwt:
-  secret: change-me-please-change-me-please-32
-  expire-minutes: 120
-  refresh-expire-minutes: 4320
 
 h2:
   console:

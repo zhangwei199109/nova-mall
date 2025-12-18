@@ -6,7 +6,7 @@
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>3.3.6</version>
+		<version>3.4.1</version>
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 	
@@ -29,17 +29,14 @@
 	
 	<properties>
 		<java.version>21</java.version>
-		<spring-boot.version>3.3.6</spring-boot.version>
-		<spring-cloud.version>2023.0.4</spring-cloud.version>
+		<spring-boot.version>3.4.1</spring-boot.version>
+		<spring-cloud.version>2024.0.0</spring-cloud.version>
 		<swagger.version>2.2.22</swagger.version>
-		<springdoc.version>2.3.0</springdoc.version>
-		<knife4j.version>4.5.0</knife4j.version>
 		<mybatis-plus.version>3.5.9</mybatis-plus.version>
 		<mysql.version>8.0.33</mysql.version>
 		<lombok.version>1.18.34</lombok.version>
 		<jjwt.version>0.12.5</jjwt.version>
 		<maven-surefire.version>3.2.5</maven-surefire.version>
-		<mapstruct.version>1.5.5.Final</mapstruct.version>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 	</properties>
 	
@@ -90,18 +87,6 @@
 				<artifactId>jjwt-jackson</artifactId>
 				<version>${jjwt.version}</version>
 			</dependency>
-			<!-- Springdoc -->
-			<dependency>
-				<groupId>org.springdoc</groupId>
-				<artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
-				<version>${springdoc.version}</version>
-			</dependency>
-			<!-- Knife4j -->
-			<dependency>
-				<groupId>com.github.xiaoymin</groupId>
-				<artifactId>knife4j-openapi3-jakarta-spring-boot-starter</artifactId>
-				<version>${knife4j.version}</version>
-			</dependency>
 			<!-- Test -->
 			<dependency>
 				<groupId>org.springframework.boot</groupId>
@@ -128,13 +113,9 @@
 	<build>
 		<pluginManagement>
 			<plugins>
-				<!-- 默认跳过 spring-boot repackage，子模块按需开启 -->
 				<plugin>
 					<groupId>org.springframework.boot</groupId>
 					<artifactId>spring-boot-maven-plugin</artifactId>
-					<configuration>
-						<skip>true</skip>
-					</configuration>
 				</plugin>
 				<plugin>
 					<groupId>org.apache.maven.plugins</groupId>
@@ -147,11 +128,6 @@
 								<groupId>org.projectlombok</groupId>
 								<artifactId>lombok</artifactId>
 								<version>${lombok.version}</version>
-							</path>
-							<path>
-								<groupId>org.mapstruct</groupId>
-								<artifactId>mapstruct-processor</artifactId>
-								<version>${mapstruct.version}</version>
 							</path>
 						</annotationProcessorPaths>
 					</configuration>

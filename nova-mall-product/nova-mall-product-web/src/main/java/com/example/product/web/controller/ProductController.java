@@ -2,9 +2,8 @@ package com.example.product.web.controller;
 
 import com.example.common.dto.Result;
 import com.example.product.api.ProductApi;
-import com.example.product.service.ProductAppService;
 import com.example.product.api.dto.ProductDTO;
-import com.example.product.web.convert.ProductWebConvert;
+import com.example.product.service.ProductAppService;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -14,11 +13,9 @@ import java.util.List;
 public class ProductController implements ProductApi {
 
     private final ProductAppService productAppService;
-    private final ProductWebConvert productWebConvert;
 
-    public ProductController(ProductAppService productAppService, ProductWebConvert productWebConvert) {
+    public ProductController(ProductAppService productAppService) {
         this.productAppService = productAppService;
-        this.productWebConvert = productWebConvert;
     }
 
     @Override
@@ -33,12 +30,13 @@ public class ProductController implements ProductApi {
 
     @Override
     public Result<ProductDTO> create(@Valid ProductDTO dto) {
-        return Result.success(productAppService.create(productWebConvert.toCreateDto(dto)));
+        return Result.success(productAppService.create(dto));
     }
 
     @Override
     public Result<ProductDTO> update(Long id, @Valid ProductDTO dto) {
-        return Result.success(productAppService.update(productWebConvert.toUpdateDto(id, dto)));
+        dto.setId(id);
+        return Result.success(productAppService.update(dto));
     }
 
     @Override

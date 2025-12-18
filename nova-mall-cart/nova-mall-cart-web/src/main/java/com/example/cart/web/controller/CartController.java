@@ -1,10 +1,9 @@
 package com.example.cart.web.controller;
 
 import com.example.cart.api.CartApi;
-import com.example.cart.service.CartAppService;
 import com.example.cart.api.dto.CartItemDTO;
+import com.example.cart.service.CartAppService;
 import com.example.common.dto.Result;
-import com.example.cart.web.convert.CartWebConvert;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -14,11 +13,9 @@ import java.util.List;
 public class CartController implements CartApi {
 
     private final CartAppService cartAppService;
-    private final CartWebConvert cartWebConvert;
 
-    public CartController(CartAppService cartAppService, CartWebConvert cartWebConvert) {
+    public CartController(CartAppService cartAppService) {
         this.cartAppService = cartAppService;
-        this.cartWebConvert = cartWebConvert;
     }
 
     @Override
@@ -28,7 +25,7 @@ public class CartController implements CartApi {
 
     @Override
     public Result<CartItemDTO> add(String userId, @Valid CartItemDTO item) {
-        return Result.success(cartAppService.add(userId, cartWebConvert.toCreateDto(item)));
+        return Result.success(cartAppService.add(userId, item));
     }
 
     @Override

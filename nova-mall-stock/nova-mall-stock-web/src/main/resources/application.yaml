@@ -3,7 +3,7 @@ server:
 
 spring:
   application:
-    name: nova-mall-stock-web
+    name: demo-stock-web
   datasource:
     driver-class-name: org.h2.Driver
     url: jdbc:h2:mem:stockdb;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
@@ -35,8 +35,8 @@ springdoc:
   swagger-ui:
     enabled: true
     path: /swagger-ui.html
-    url: ./v3/api-docs
-    config-url: ./v3/api-docs/swagger-config
+    url: /stock/v3/api-docs
+    config-url: /stock/v3/api-docs/swagger-config
 
 knife4j:
   enable: true

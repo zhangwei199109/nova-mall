@@ -2,12 +2,12 @@ package com.example.stock.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.example.common.exception.BusinessException;
-import com.example.stock.api.dto.StockChangeDTO;
 import com.example.stock.api.dto.StockDTO;
+import com.example.stock.api.dto.StockChangeDTO;
 import com.example.stock.service.StockAppService;
-import com.example.stock.service.convert.StockConvert;
 import com.example.stock.service.entity.Stock;
 import com.example.stock.service.mapper.StockMapper;
+import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,11 +15,9 @@ import org.springframework.transaction.annotation.Transactional;
 public class StockServiceImpl implements StockAppService {
 
     private final StockMapper stockMapper;
-    private final StockConvert stockConvert;
 
-    public StockServiceImpl(StockMapper stockMapper, StockConvert stockConvert) {
+    public StockServiceImpl(StockMapper stockMapper) {
         this.stockMapper = stockMapper;
-        this.stockConvert = stockConvert;
     }
 
     @Override
@@ -29,7 +27,7 @@ public class StockServiceImpl implements StockAppService {
         if (stock == null) {
             throw new BusinessException(404, "库存不存在");
         }
-        return stockConvert.toDTO(stock);
+        return toDTO(stock);
     }
 
     @Override
@@ -78,6 +76,12 @@ public class StockServiceImpl implements StockAppService {
             stockMapper.insert(stock);
         }
         return stock;
+    }
+
+    private StockDTO toDTO(Stock s) {
+        StockDTO dto = new StockDTO();
+        BeanUtils.copyProperties(s, dto);
+        return dto;
     }
 }
 

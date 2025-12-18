@@ -3,7 +3,7 @@ server:
 
 spring:
   application:
-    name: nova-mall-cart-web
+    name: demo-cart-web
   datasource:
     driver-class-name: org.h2.Driver
     url: jdbc:h2:mem:cartdb;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
@@ -35,8 +35,8 @@ springdoc:
   swagger-ui:
     enabled: true
     path: /swagger-ui.html
-    url: ./v3/api-docs
-    config-url: ./v3/api-docs/swagger-config
+    url: /cart/v3/api-docs
+    config-url: /cart/v3/api-docs/swagger-config
 
 knife4j:
   enable: true

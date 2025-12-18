@@ -4,9 +4,6 @@ import com.example.cart.api.dto.CartItemDTO;
 
 import java.util.List;
 
-/**
- * 购物车领域应用服务。
- */
 public interface CartAppService {
 
     List<CartItemDTO> list(String userId);

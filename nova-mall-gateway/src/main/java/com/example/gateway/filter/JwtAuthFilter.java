@@ -1,12 +1,11 @@
 package com.example.gateway.filter;
 
 import com.example.gateway.config.JwtAuthProperties;
-import com.example.gateway.service.JwtTokenService;
-import com.example.gateway.service.TokenBlacklist;
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.security.Keys;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.core.Ordered;
-import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -16,12 +15,12 @@ import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
 import reactor.core.publisher.Mono;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.util.List;
-import java.util.UUID;
+import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 /**
  * 简单 JWT 鉴权 + TraceId 透传。
@@ -29,7 +28,6 @@ import java.nio.charset.StandardCharsets;
 @Component
 public class JwtAuthFilter implements GlobalFilter, Ordered {
 
-    private static final Logger log = LoggerFactory.getLogger(JwtAuthFilter.class);
     private static final String BEARER_PREFIX = "Bearer ";
     private static final String HDR_TRACE_ID = "X-Trace-Id";
     private static final String HDR_USER_ID = "X-User-Id";
@@ -37,13 +35,11 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
     private static final String HDR_USER_ROLES = "X-User-Roles";
 
     private final JwtAuthProperties props;
-    private final JwtTokenService tokenService;
-    private final TokenBlacklist tokenBlacklist;
+    private final SecretKey secretKey;
 
-    public JwtAuthFilter(JwtAuthProperties props, JwtTokenService tokenService, TokenBlacklist tokenBlacklist) {
+    public JwtAuthFilter(JwtAuthProperties props) {
         this.props = props;
-        this.tokenService = tokenService;
-        this.tokenBlacklist = tokenBlacklist;
+        this.secretKey = Keys.hmacShaKeyFor(props.getSecret().getBytes(StandardCharsets.UTF_8));
     }
 
     @Override
@@ -52,7 +48,6 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
         String traceId = ensureTraceId(exchange);
 
         if (!props.isEnabled() || isWhitelisted(path)) {
-            log.debug("auth skip for path {} traceId {}", path, traceId);
             // 仍然透传 traceId
             return chain.filter(mutateWithTrace(exchange, traceId));
         }
@@ -65,7 +60,12 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
         String token = authz.substring(BEARER_PREFIX.length()).trim();
         Claims claims;
         try {
-            claims = tokenService.parse(token);
+            claims = Jwts.parser()
+                    .verifyWith(secretKey)
+                    .clockSkewSeconds(props.getLeeway().toSeconds())
+                    .build()
+                    .parseSignedClaims(token)
+                    .getPayload();
         } catch (Exception e) {
             return unauthorized(exchange, traceId, "Token 校验失败: " + e.getMessage());
         }
@@ -73,16 +73,7 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
         String userId = claims.get("uid", String.class);
         String username = claims.get("name", String.class);
         Object rolesObj = claims.get("roles");
-        String roles = "";
-        if (rolesObj instanceof List<?> list) {
-            roles = String.join(",", list.stream().map(Object::toString).toList());
-        } else if (rolesObj != null) {
-            roles = rolesObj.toString();
-        }
-        String jti = claims.getId();
-        if (StringUtils.isNotBlank(jti) && tokenBlacklist.isBlacklisted(jti)) {
-            return unauthorized(exchange, traceId, "Token 已失效，请重新登录");
-        }
+        String roles = rolesObj == null ? "" : rolesObj.toString();
 
         return chain.filter(
                 mutateWithHeaders(exchange, traceId, userId, username, roles)
@@ -140,7 +131,7 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
         response.getHeaders().setContentType(MediaType.APPLICATION_JSON);
         response.getHeaders().set(HDR_TRACE_ID, traceId);
         String body = "{\"code\":401,\"message\":\"" + message + "\",\"traceId\":\"" + traceId + "\"}";
-        DataBuffer buffer = response.bufferFactory().wrap(body.getBytes(StandardCharsets.UTF_8));
+        var buffer = response.bufferFactory().wrap(body.getBytes(StandardCharsets.UTF_8));
         return response.writeWith(Mono.just(buffer));
     }
 }
