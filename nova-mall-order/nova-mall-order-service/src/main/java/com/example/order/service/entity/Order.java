@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.Version;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -20,11 +21,17 @@ public class Order {
 
     private String orderNo;
 
+    @TableField("idem_key")
+    private String idemKey;
+
     private Long userId;
 
     private BigDecimal amount;
 
     private String status;
+
+    @Version
+    private Integer version;
 
     @TableLogic
     private Integer deleted;

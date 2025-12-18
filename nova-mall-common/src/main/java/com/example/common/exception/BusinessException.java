@@ -1,11 +1,14 @@
 package com.example.common.exception;
 
+import lombok.Getter;
+
 /**
  * 业务异常
  */
+@Getter
 public class BusinessException extends RuntimeException {
     
-    private int code;
+    private final int code;
     
     public BusinessException(String message) {
         super(message);
@@ -21,8 +24,5 @@ public class BusinessException extends RuntimeException {
         super(message, cause);
         this.code = code;
     }
-    
-    public int getCode() {
-        return code;
-    }
+
 }

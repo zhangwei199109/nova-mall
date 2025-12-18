@@ -1,19 +1,28 @@
 package com.example.order.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.example.order.api.OrderAppService;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.example.common.dto.PageResult;
+import com.example.common.exception.BusinessException;
 import com.example.order.api.dto.CreateOrderRequest;
 import com.example.order.api.dto.OrderDTO;
 import com.example.order.api.dto.OrderItemDTO;
+import com.example.order.service.OrderAppService;
+import com.example.order.service.config.SnowflakeIdGenerator;
 import com.example.order.service.entity.Order;
 import com.example.order.service.entity.OrderItem;
+import com.example.order.service.entity.OrderCallbackLog;
 import com.example.order.service.enums.OrderStatus;
+import com.example.order.service.mapper.OrderCallbackLogMapper;
 import com.example.order.service.mapper.OrderItemMapper;
 import com.example.order.service.mapper.OrderMapper;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
-import java.util.ArrayList;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -22,29 +31,93 @@ public class OrderServiceImpl implements OrderAppService {
 
     private final OrderMapper orderMapper;
     private final OrderItemMapper orderItemMapper;
+    private final SnowflakeIdGenerator snowflakeIdGenerator;
+    private final OrderCallbackLogMapper orderCallbackLogMapper;
 
-    public OrderServiceImpl(OrderMapper orderMapper, OrderItemMapper orderItemMapper) {
+    public OrderServiceImpl(OrderMapper orderMapper, OrderItemMapper orderItemMapper,
+                            SnowflakeIdGenerator snowflakeIdGenerator,
+                            OrderCallbackLogMapper orderCallbackLogMapper) {
         this.orderMapper = orderMapper;
         this.orderItemMapper = orderItemMapper;
+        this.snowflakeIdGenerator = snowflakeIdGenerator;
+        this.orderCallbackLogMapper = orderCallbackLogMapper;
     }
 
     @Override
-    public List<OrderDTO> list() {
-        return orderMapper.selectList(null).stream()
+    public PageResult<OrderDTO> list(Long userId, Integer pageNo, Integer pageSize) {
+        if (userId == null) {
+            throw new BusinessException(400, "用户ID不能为空");
+        }
+        int page = (pageNo == null || pageNo < 1) ? 1 : pageNo;
+        int size = (pageSize == null || pageSize < 1 || pageSize > 100) ? 20 : pageSize;
+        Page<Order> mpPage = new Page<>(page, size);
+        Page<Order> result = orderMapper.selectPage(mpPage, new LambdaQueryWrapper<Order>()
+                .eq(Order::getUserId, userId)
+                .orderByDesc(Order::getId));
+        List<OrderDTO> records = result.getRecords().stream()
                 .map(this::toDTO)
                 .collect(Collectors.toList());
+        return new PageResult<>(records, result.getTotal(), result.getCurrent(), result.getSize());
     }
 
     @Override
-    public OrderDTO getById(Long id) {
-        Order order = orderMapper.selectById(id);
+    public OrderDTO getById(Long id, Long userId) {
+        if (id == null || userId == null) {
+            throw new BusinessException(400, "参数不能为空");
+        }
+        Order order = orderMapper.selectOne(new LambdaQueryWrapper<Order>()
+                .eq(Order::getId, id)
+                .eq(Order::getUserId, userId));
         return order == null ? null : toDTO(order);
     }
 
     @Override
     @Transactional
-    public OrderDTO create(CreateOrderRequest req, OrderDTO computed) {
+    public OrderDTO createOrder(String idemKey, CreateOrderRequest req) {
+        if (req == null || req.getUserId() == null) {
+            throw new BusinessException(400, "用户ID不能为空");
+        }
+        List<OrderItemDTO> items = req.getItems();
+        if (items == null || items.isEmpty()) {
+            throw new BusinessException(400, "订单项不能为空");
+        }
+        validateItems(items);
+        if (StringUtils.hasText(idemKey)) {
+            Order existed = orderMapper.selectOne(new LambdaQueryWrapper<Order>()
+                    .eq(Order::getUserId, req.getUserId())
+                    .eq(Order::getIdemKey, idemKey));
+            if (existed != null) {
+                return toDTO(existed);
+            }
+        }
+        OrderDTO computed = new OrderDTO();
+        computed.setUserId(req.getUserId());
+        computed.setOrderNo(generateOrderNo());
+        computed.setStatus(OrderStatus.CREATED.name());
+        computed.setItems(items);
+        computed.setAmount(calcAmount(items));
+        try {
+            return create(req, computed, idemKey);
+        } catch (DuplicateKeyException e) {
+            if (StringUtils.hasText(idemKey)) {
+                Order existed = orderMapper.selectOne(new LambdaQueryWrapper<Order>()
+                        .eq(Order::getUserId, req.getUserId())
+                        .eq(Order::getIdemKey, idemKey));
+                if (existed != null) {
+                    return toDTO(existed);
+                }
+            }
+            throw e;
+        }
+    }
+
+    @Override
+    @Transactional
+    public OrderDTO create(CreateOrderRequest req, OrderDTO computed, String idemKey) {
         Order order = toEntity(computed);
+        if (StringUtils.hasText(idemKey)) {
+            order.setIdemKey(idemKey);
+        }
         orderMapper.insert(order);
         Long orderId = order.getId();
         if (computed.getItems() != null) {
@@ -53,7 +126,7 @@ public class OrderServiceImpl implements OrderAppService {
                     .collect(Collectors.toList());
             items.forEach(orderItemMapper::insert);
         }
-        return getById(order.getId());
+        return getById(order.getId(), order.getUserId());
     }
 
     @Override
@@ -63,12 +136,86 @@ public class OrderServiceImpl implements OrderAppService {
 
     @Override
     public boolean updateStatus(Long id, String status) {
+        OrderStatus target = parseStatus(status).orElseThrow(() -> new BusinessException(400, "状态非法"));
         Order order = orderMapper.selectById(id);
         if (order == null) {
             return false;
         }
-        order.setStatus(status);
-        return orderMapper.updateById(order) > 0;
+        return orderMapper.update(new Order(), new LambdaUpdateWrapper<Order>()
+                .eq(Order::getId, id)
+                .eq(Order::getVersion, order.getVersion())
+                .set(Order::getStatus, target.name())
+                .set(Order::getVersion, order.getVersion() + 1)) > 0;
+    }
+
+    @Override
+    @Transactional
+    public boolean pay(Long id, boolean fromCallback) {
+        return pay(id, fromCallback, null);
+    }
+
+    @Override
+    @Transactional
+    public boolean pay(Long id, boolean fromCallback, String callbackKey) {
+        Order order = orderMapper.selectById(id);
+        if (order == null) {
+            throw new BusinessException(404, "订单不存在");
+        }
+        OrderStatus current = parseStatus(order.getStatus())
+                .orElseThrow(() -> new BusinessException(400, "订单状态非法"));
+        if (current == OrderStatus.PAID) {
+            return true; // 幂等：已支付视为成功
+        }
+        if (!OrderStatus.canPay(current)) {
+            throw new BusinessException(400, "当前状态不可支付");
+        }
+        if (fromCallback && StringUtils.hasText(callbackKey)) {
+            try {
+                OrderCallbackLog log = new OrderCallbackLog();
+                log.setOrderId(id);
+                log.setCallbackKey(callbackKey);
+                orderCallbackLogMapper.insert(log);
+            } catch (DuplicateKeyException e) {
+                return true; // 回调幂等：重复回调直接视为成功
+            }
+        }
+        int updated = orderMapper.update(null, new LambdaUpdateWrapper<Order>()
+                .eq(Order::getId, id)
+                .eq(Order::getStatus, OrderStatus.CREATED.name())
+                .eq(Order::getVersion, order.getVersion())
+                .set(Order::getStatus, OrderStatus.PAID.name())
+                .set(Order::getVersion, order.getVersion() + 1));
+        if (updated == 0) {
+            throw new BusinessException(409, "支付冲突，请重试");
+        }
+        return true;
+    }
+
+    @Override
+    @Transactional
+    public boolean cancel(Long id) {
+        Order order = orderMapper.selectById(id);
+        if (order == null) {
+            throw new BusinessException(404, "订单不存在");
+        }
+        OrderStatus current = parseStatus(order.getStatus())
+                .orElseThrow(() -> new BusinessException(400, "订单状态非法"));
+        if (current == OrderStatus.CANCELLED) {
+            return true; // 幂等：已取消视为成功
+        }
+        if (!OrderStatus.canCancel(current)) {
+            throw new BusinessException(400, "当前状态不可取消");
+        }
+        int updated = orderMapper.update(null, new LambdaUpdateWrapper<Order>()
+                .eq(Order::getId, id)
+                .eq(Order::getStatus, OrderStatus.CREATED.name())
+                .eq(Order::getVersion, order.getVersion())
+                .set(Order::getStatus, OrderStatus.CANCELLED.name())
+                .set(Order::getVersion, order.getVersion() + 1));
+        if (updated == 0) {
+            throw new BusinessException(409, "取消冲突，请重试");
+        }
+        return true;
     }
 
     private OrderDTO toDTO(Order order) {
@@ -110,6 +257,42 @@ public class OrderServiceImpl implements OrderAppService {
         dto.setPrice(item.getPrice());
         dto.setQuantity(item.getQuantity());
         return dto;
+    }
+
+    private java.util.Optional<OrderStatus> parseStatus(String status) {
+        try {
+            return java.util.Optional.of(OrderStatus.valueOf(status));
+        } catch (Exception e) {
+            return java.util.Optional.empty();
+        }
+    }
+
+    private BigDecimal calcAmount(List<OrderItemDTO> items) {
+        return items.stream()
+                .map(i -> {
+                    BigDecimal price = i.getPrice() == null ? BigDecimal.ZERO : i.getPrice();
+                    int quantity = i.getQuantity() == null ? 0 : i.getQuantity();
+                    return price.multiply(BigDecimal.valueOf(quantity));
+                })
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    private void validateItems(List<OrderItemDTO> items) {
+        for (OrderItemDTO i : items) {
+            if (i.getProductId() == null) {
+                throw new BusinessException(400, "商品ID不能为空");
+            }
+            if (i.getQuantity() == null || i.getQuantity() < 1) {
+                throw new BusinessException(400, "数量至少为1");
+            }
+            if (i.getPrice() == null || i.getPrice().compareTo(BigDecimal.ZERO) < 0) {
+                throw new BusinessException(400, "价格必须大于等于0");
+            }
+        }
+    }
+
+    private String generateOrderNo() {
+        return "ORD-" + snowflakeIdGenerator.nextIdStr();
     }
 }
 
