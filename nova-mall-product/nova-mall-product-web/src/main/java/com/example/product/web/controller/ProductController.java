@@ -3,6 +3,7 @@ package com.example.product.web.controller;
 import com.example.common.dto.Result;
 import com.example.product.api.ProductApi;
 import com.example.product.api.dto.ProductDTO;
+import com.example.product.api.dto.ProductRecDTO;
 import com.example.product.service.ProductAppService;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.RestController;
@@ -42,6 +43,11 @@ public class ProductController implements ProductApi {
     @Override
     public Result<Boolean> delete(Long id) {
         return Result.success(productAppService.delete(id));
+    }
+
+    @Override
+    public Result<List<ProductRecDTO>> recommendByProduct(Long productId, Integer limit) {
+        return Result.success(productAppService.recommendByProduct(productId, limit));
     }
 }
 

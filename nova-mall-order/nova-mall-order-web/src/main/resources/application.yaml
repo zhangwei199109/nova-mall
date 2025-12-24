@@ -2,6 +2,8 @@ server:
   port: 8084
 
 spring:
+  profiles:
+    active: local
   application:
     name: nova-mall-order-web
   datasource:
@@ -37,11 +39,14 @@ springdoc:
     path: /swagger-ui.html
     url: ./v3/api-docs
     config-url: ./v3/api-docs/swagger-config
+  packages-to-scan: com.example.order.web.controller
+  paths-to-match: /order/**,/ai/**
 
 knife4j:
   enable: true
   setting:
     language: zh_cn
+  production: false
 
 h2:
   console:

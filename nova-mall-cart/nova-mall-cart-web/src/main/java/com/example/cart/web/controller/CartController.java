@@ -5,6 +5,7 @@ import com.example.cart.api.dto.CartItemDTO;
 import com.example.cart.service.CartAppService;
 import com.example.common.dto.Result;
 import com.example.common.web.AuthContext;
+import com.example.cart.web.client.ProductRecommendClient;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -13,16 +14,26 @@ public class CartController implements CartApi {
 
     private final CartAppService cartAppService;
     private final AuthContext authContext;
+    private final ProductRecommendClient productRecommendClient;
 
-    public CartController(CartAppService cartAppService, AuthContext authContext) {
+    public CartController(CartAppService cartAppService, AuthContext authContext,
+                          ProductRecommendClient productRecommendClient) {
         this.cartAppService = cartAppService;
         this.authContext = authContext;
+        this.productRecommendClient = productRecommendClient;
     }
 
     @Override
     public Result<java.util.List<CartItemDTO>> list() {
         String userId = String.valueOf(authContext.currentUserId());
-        return Result.success(cartAppService.list(userId));
+        java.util.List<CartItemDTO> items = cartAppService.list(userId);
+        // 示例：基于第一件商品做推荐，后续可扩展为更多策略
+        if (!items.isEmpty()) {
+            Long productId = items.get(0).getProductId();
+            // 推荐结果暂未合并到返回体，后续可扩展返回或透传至前端
+            productRecommendClient.recommendByProduct(productId, 6);
+        }
+        return Result.success(items);
     }
 
     @Override

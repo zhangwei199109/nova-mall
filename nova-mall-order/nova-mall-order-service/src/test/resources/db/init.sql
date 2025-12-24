@@ -41,3 +41,6 @@ CREATE TABLE `order_callback_log` (
   UNIQUE KEY `uk_order_callback` (`order_id`, `callback_key`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='支付回调幂等记录';
 
+
+
+

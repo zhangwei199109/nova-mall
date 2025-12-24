@@ -8,3 +8,6 @@ import org.apache.ibatis.annotations.Mapper;
 public interface OrderCallbackLogMapper extends BaseMapper<OrderCallbackLog> {
 }
 
+
+
+

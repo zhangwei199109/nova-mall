@@ -19,5 +19,39 @@ public class OrderCallbackLog {
     private String callbackKey;
 
     private LocalDateTime createTime;
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public Long getOrderId() {
+        return orderId;
+    }
+
+    public void setOrderId(Long orderId) {
+        this.orderId = orderId;
+    }
+
+    public String getCallbackKey() {
+        return callbackKey;
+    }
+
+    public void setCallbackKey(String callbackKey) {
+        this.callbackKey = callbackKey;
+    }
+
+    public LocalDateTime getCreateTime() {
+        return createTime;
+    }
+
+    public void setCreateTime(LocalDateTime createTime) {
+        this.createTime = createTime;
+    }
 }
+
+
 
