@@ -2,6 +2,11 @@ package com.example.ai.controller;
 
 import com.example.ai.api.AiApi;
 import com.example.ai.api.dto.QaRequest;
+import com.example.ai.api.dto.ProductCopyRequest;
+import com.example.ai.api.dto.ProductCopyResponse;
+import com.example.ai.api.dto.SemanticSearchRequest;
+import com.example.ai.api.dto.SemanticSearchResult;
+import com.example.ai.service.AiProductService;
 import com.example.ai.service.AiQaService;
 import com.example.ai.retrieve.RetrievedDoc;
 import com.example.common.dto.Result;
@@ -31,9 +36,11 @@ import java.util.concurrent.atomic.AtomicLong;
 public class AiAssistantController implements AiApi {
 
     private final AiQaService aiQaService;
+    private final AiProductService aiProductService;
 
-    public AiAssistantController(AiQaService aiQaService) {
+    public AiAssistantController(AiQaService aiQaService, AiProductService aiProductService) {
         this.aiQaService = aiQaService;
+        this.aiProductService = aiProductService;
     }
 
     @Operation(summary = "问答", description = "输入问题，检索 FAQ 并通过 LLM 生成回答")
@@ -119,6 +126,20 @@ public class AiAssistantController implements AiApi {
             }
         });
         return emitter;
+    }
+
+    @Operation(summary = "商品文案生成", description = "输入商品要素，生成标题/卖点/描述/SEO 关键词")
+    @PostMapping(value = "/product/copy", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    @Override
+    public Result<ProductCopyResponse> generateProductCopy(@Valid @RequestBody ProductCopyRequest req) {
+        return Result.success(aiProductService.generateCopy(req));
+    }
+
+    @Operation(summary = "商品语义搜索/推荐", description = "自然语言找商品，返回 TopK 语义相关结果")
+    @PostMapping(value = "/product/search", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    @Override
+    public Result<java.util.List<SemanticSearchResult>> semanticSearch(@Valid @RequestBody SemanticSearchRequest req) {
+        return Result.success(aiProductService.semanticSearch(req));
     }
 
     private boolean trySendSse(SseEmitter emitter, AtomicBoolean done, AtomicLong seq, String requestId,

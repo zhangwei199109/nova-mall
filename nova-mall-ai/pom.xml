@@ -15,6 +15,20 @@
     <name>nova-mall-ai</name>
     <description>AI 客服/问答服务</description>
 
+    <properties>
+        <maven.compiler.release>21</maven.compiler.release>
+    </properties>
+
+    <repositories>
+        <repository>
+            <id>spring-milestone</id>
+            <url>https://repo.spring.io/milestone</url>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </repository>
+    </repositories>
+
     <modules>
         <module>nova-mall-ai-api</module>
         <module>nova-mall-ai-service</module>

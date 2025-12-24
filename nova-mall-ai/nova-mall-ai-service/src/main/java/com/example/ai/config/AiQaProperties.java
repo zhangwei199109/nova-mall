@@ -15,6 +15,11 @@ public class AiQaProperties {
     private String llmModel;
     private String llmApiKey;
 
+    /** 是否启用 Spring AI ChatClient（默认 true） */
+    private boolean springAiEnabled = true;
+    /** Spring AI 兼容的 Base URL（如 DashScope 兼容模式） */
+    private String springAiBaseUrl;
+
     /** HTTP 连接超时（毫秒），默认 5000 */
     private int connectTimeoutMs = 5000;
     /** HTTP 读超时（毫秒），默认 15000 */

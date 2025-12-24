@@ -1,5 +1,7 @@
 package com.example.ai.llm;
 
+import com.example.ai.api.dto.ProductCopyRequest;
+import com.example.ai.api.dto.ProductCopyResponse;
 import com.example.ai.config.AiQaProperties;
 import com.example.ai.retrieve.RetrievedDoc;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -7,11 +9,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
+import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestTemplate;
 
 import java.io.BufferedReader;
@@ -37,32 +42,69 @@ public class LlmClient {
     private final AiQaProperties properties;
     private final HttpClient httpClient;
     private final ObjectMapper objectMapper = new ObjectMapper();
+    /** Spring AI ChatClient，可选注入 */
+    private final ChatClient chatClient;
 
-    public LlmClient(AiQaProperties properties) {
+    public LlmClient(AiQaProperties properties, @Nullable ChatClient chatClient) {
         this.properties = properties;
+        this.chatClient = chatClient;
         this.restTemplate = buildRestTemplate(properties);
         this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofMillis(properties.getConnectTimeoutMs()))
                 .build();
+        log.info("LlmClient init, ChatClient injected? {}", chatClient != null);
     }
 
     public String generate(String question, List<RetrievedDoc> contexts) {
-        String answer = callAliLlm(question, contexts);
-        if (answer != null && !answer.isBlank()) {
-            return answer;
+        String viaSpringAi = callSpringAi(question, contexts);
+        if (StringUtils.hasText(viaSpringAi)) {
+            return viaSpringAi;
         }
-        if (contexts == null || contexts.isEmpty()) {
-            return "抱歉，暂未找到相关答案，请稍后重试或联系人工客服。";
+        throw new IllegalStateException("Spring AI 调用失败且已禁用 HTTP/本地兜底");
+    }
+
+    /**
+     * 商品文案生成：优先使用 Spring AI，其次复用通用 generate，失败则返回本地占位。
+     */
+    public ProductCopyResponse generateProductCopy(ProductCopyRequest req) {
+        log.info("LlmClient productCopy baseUrl={} model={}", properties.getSpringAiBaseUrl(), "qwen-turbo");
+        String system = """
+                你是电商文案助手，请根据用户提供的要素生成 JSON：
+                字段：title（不超30字）、bullets（4条，每条<=20字）、description（<=160字）、seoKeywords（5-8个短词）。
+                输出必须是 JSON，无额外文本。
+                """;
+        String user = """
+                商品名称：%s
+                卖点：%s
+                渠道：%s
+                语气：%s
+                受众：%s
+                语言：%s
+                """.formatted(
+                req.getProductName(),
+                req.getHighlights() == null ? "" : String.join("、", req.getHighlights()),
+                req.getChannel(),
+                req.getTone(),
+                req.getAudience(),
+                req.getLanguage() == null ? "zh-CN" : req.getLanguage()
+        );
+
+        try {
+            String text = requireChatClient().prompt().system(system).user(user).call().content();
+            if (!StringUtils.hasText(text)) {
+                throw new IllegalStateException("Spring AI 返回空内容");
+            }
+            return new ProductCopyResponse(text, List.of(), "", List.of());
+        } catch (Exception e) {
+            throw new IllegalStateException("Spring AI 商品文案生成失败: " + e.getMessage(), e);
         }
-        String joined = contexts.stream()
-                .map(doc -> "- " + doc.content())
-                .collect(Collectors.joining("\n"));
-        return """
-                您问到：“%s”
-                根据检索到的信息，供参考：
-                %s
-                （本回答由内置模型生成，可联系人工客服获取更多帮助）
-                """.formatted(question, joined);
+    }
+
+    private ChatClient requireChatClient() {
+        if (chatClient == null) {
+            throw new IllegalStateException("Spring AI ChatClient 未注入，请检查 spring.ai.openai.api-key/base-url 及依赖是否生效");
+        }
+        return chatClient;
     }
 
     private String callAliLlm(String question, List<RetrievedDoc> contexts) {
@@ -119,6 +161,26 @@ public class LlmClient {
             }
         }
         return null;
+    }
+
+    private boolean useSpringAi() {
+        return properties.isSpringAiEnabled() && chatClient != null;
+    }
+
+    private String callSpringAi(String question, List<RetrievedDoc> contexts) {
+        try {
+            String contextText = buildContextText(contexts);
+            String system = systemPrompt();
+            String user = buildUserPrompt(question, contextText);
+            return chatClient.prompt()
+                    .system(system)
+                    .user(user)
+                    .call()
+                    .content();
+        } catch (Exception e) {
+            log.warn("SpringAI call failed: {}", e.toString());
+            return null;
+        }
     }
 
     private @NonNull Map<String, Object> getStringObjectMap(String question, String contextText, String model) {

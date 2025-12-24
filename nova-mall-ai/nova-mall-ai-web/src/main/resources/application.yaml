@@ -4,8 +4,14 @@ server:
 spring:
   application:
     name: nova-mall-ai
-  profiles:
-    active: local
+  ai:
+    openai:
+      api-key: sk-8d8864b7b0024a3db807422b5407f239
+      base-url: https://dashscope.aliyuncs.com/compatible-mode
+      chat:
+        options:
+          model: qwen-turbo
+
 
 springdoc:
   api-docs:
@@ -29,10 +35,4 @@ logging:
   level:
     com.example.ai: INFO
 
-ai:
-  qa:
-    vector-endpoint:
-    llm-endpoint:
-    llm-model: qwen-turbo
-    llm-api-key:
 
