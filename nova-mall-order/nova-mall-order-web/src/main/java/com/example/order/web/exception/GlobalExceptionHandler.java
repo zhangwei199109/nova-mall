@@ -2,6 +2,7 @@ package com.example.order.web.exception;
 
 import com.example.common.dto.Result;
 import com.example.common.exception.BusinessException;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.validation.BindException;
 import org.springframework.validation.FieldError;
@@ -33,7 +34,15 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(Exception.class)
-    public Result<Void> handleOther(Exception e) {
+    public Object handleOther(HttpServletRequest request, Exception e) {
+        String ct = request.getHeader("Content-Type");
+        String accept = request.getHeader("Accept");
+        boolean isEventStream = (ct != null && ct.contains("text/event-stream")) || (accept != null && accept.contains("text/event-stream"));
+        if (isEventStream) {
+            // 对 SSE/流式请求，仅记录，不再返回 Result，避免转换器错误
+            log.warn("SSE/stream request error (suppressed): {}", e.toString());
+            return null;
+        }
         log.error("系统异常", e);
         return Result.error(500, "系统异常，请稍后重试");
     }

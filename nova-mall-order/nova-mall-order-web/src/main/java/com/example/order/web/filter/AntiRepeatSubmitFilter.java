@@ -1,6 +1,5 @@
 package com.example.order.web.filter;
 
-import com.example.common.dto.Result;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import jakarta.servlet.FilterChain;

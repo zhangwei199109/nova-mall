@@ -40,7 +40,7 @@ springdoc:
     url: ./v3/api-docs
     config-url: ./v3/api-docs/swagger-config
   packages-to-scan: com.example.order.web.controller
-  paths-to-match: /order/**,/ai/**
+  paths-to-match: /order/**
 
 knife4j:
   enable: true

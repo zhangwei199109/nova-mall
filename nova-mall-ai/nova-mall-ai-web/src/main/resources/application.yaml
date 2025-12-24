@@ -1,0 +1,38 @@
+server:
+  port: 8086
+
+spring:
+  application:
+    name: nova-mall-ai
+  profiles:
+    active: local
+
+springdoc:
+  api-docs:
+    enabled: true
+    path: /v3/api-docs
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui.html
+    url: ./v3/api-docs
+    config-url: ./v3/api-docs/swagger-config
+  packages-to-scan: com.example.ai.interfaces.controller
+  paths-to-match: /ai/**
+
+knife4j:
+  enable: true
+  setting:
+    language: zh_cn
+  production: false
+
+logging:
+  level:
+    com.example.ai: INFO
+
+ai:
+  qa:
+    vector-endpoint:
+    llm-endpoint:
+    llm-model: qwen-turbo
+    llm-api-key:
+

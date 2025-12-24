@@ -1,0 +1,134 @@
+<!doctype html>
+<html>
+<body>
+  <h3>GET SSE</h3>
+  <input id="q1" value="你好" />
+  <button onclick="testGetSSE()">开始</button>
+  <button onclick="stopGetSSE()">停止</button>
+  <pre id="log1"></pre>
+
+  <h3>POST SSE</h3>
+  <input id="q2" value="你好" />
+  <button onclick="testPostSSE()">开始</button>
+  <pre id="log2"></pre>
+
+  <h3>POST chunked</h3>
+  <input id="q3" value="你好" />
+  <button onclick="testChunk()">开始</button>
+  <pre id="log3"></pre>
+
+<script>
+const baseInput = document.createElement('input');
+baseInput.id = 'base-url';
+baseInput.value = 'http://localhost:8086';
+baseInput.style.width = '260px';
+document.body.insertBefore(baseInput, document.body.firstChild);
+document.body.insertBefore(document.createTextNode('Base URL: '), document.body.firstChild);
+document.body.insertBefore(document.createElement('br'), document.body.firstChild);
+
+function base() {
+  return document.getElementById('base-url').value.replace(/\/$/, '');
+}
+let esGet;
+
+function addLog(el, obj) {
+  el.textContent += JSON.stringify(obj) + '\n';
+}
+
+function testGetSSE() {
+  const q = document.getElementById('q1').value;
+  if (esGet) esGet.close();
+  const es = new EventSource(`${base()}/ai/qa/stream?question=${encodeURIComponent(q)}`);
+  esGet = es;
+  const log = document.getElementById('log1');
+  log.textContent = '';
+  const handler = (eventName) => (e) => {
+    try {
+      const data = JSON.parse(e.data);
+      addLog(log, {event: eventName, data});
+    } catch (err) {
+      addLog(log, {event: eventName, raw: e.data, parseError: err.message});
+    }
+  };
+  es.onmessage = handler('message');
+  es.addEventListener('status', handler('status'));
+  es.addEventListener('answer', handler('answer'));
+  es.addEventListener('error', e => {
+    addLog(log, {event: 'error', raw: e.data});
+  });
+}
+
+function stopGetSSE() {
+  if (esGet) {
+    esGet.close();
+    esGet = null;
+  }
+}
+
+function testPostSSE() {
+  const q = document.getElementById('q2').value;
+  const log = document.getElementById('log2');
+  log.textContent = '';
+  fetch(`${base()}/ai/qa/stream`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({question: q})
+  }).then(resp => {
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = '';
+    return reader.read().then(function process({done, value}) {
+      if (done) return;
+      buf += decoder.decode(value, {stream:true});
+      let idx;
+      while ((idx = buf.indexOf('\n')) >= 0) {
+        const line = buf.slice(0, idx).trim();
+        buf = buf.slice(idx + 1);
+        if (!line) continue;
+        try {
+          const data = JSON.parse(line);
+          addLog(log, data);
+        } catch (err) {
+          addLog(log, {raw: line, parseError: err.message});
+        }
+      }
+      return reader.read().then(process);
+    });
+  }).catch(err => log.textContent += `error: ${err}\n`);
+}
+
+function testChunk() {
+  const q = document.getElementById('q3').value;
+  const log = document.getElementById('log3');
+  log.textContent = '';
+  fetch(`${base()}/ai/qa/stream-chunk`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({question: q})
+  }).then(resp => {
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = '';
+    return reader.read().then(function process({done, value}) {
+      if (done) return;
+      buf += decoder.decode(value, {stream:true});
+      let idx;
+      while ((idx = buf.indexOf('\n')) >= 0) {
+        const line = buf.slice(0, idx).trim();
+        buf = buf.slice(idx + 1);
+        if (!line) continue;
+        try {
+          const data = JSON.parse(line);
+          addLog(log, data);
+        } catch (err) {
+          addLog(log, {raw: line, parseError: err.message});
+        }
+      }
+      return reader.read().then(process);
+    });
+  }).catch(err => log.textContent += `error: ${err}\n`);
+}
+</script>
+</body>
+</html>
+

@@ -1,8 +1,112 @@
+# nova-mall 分层多模块项目
+
+基于 Spring Boot 3.3.x / Spring Cloud 2023.0.x，采用 api / service / web 拆分。
+
+## 模块总览
+- `nova-mall-common` / `nova-mall-common-web`
+- `nova-mall-gateway`
+- 业务域：`nova-mall-order`、`nova-mall-product`、`nova-mall-stock`、`nova-mall-cart`、`nova-mall-user`（均含 api/service/web）
+- `nova-mall-ai`
+  - `nova-mall-ai-api`：AI 契约（`AiApi`、`QaRequest`）
+  - `nova-mall-ai-service`：领域/基础设施（LLM 调用、向量/FAQ 检索，`AiQaService`/impl）
+  - `nova-mall-ai-web`：Web/文档/静态测试页
+
+## 环境与构建
+- JDK 21，Maven 3.9+
+- 全量打包：`mvn clean package -DskipTests`
+- 订单打包：`mvn -pl nova-mall-order/nova-mall-order-web -am clean package -DskipTests`
+- AI 打包：`mvn -pl nova-mall-ai/nova-mall-ai-web -am clean package -DskipTests`
+- 运行 AI Web（默认 8086）：
+  ```
+  export JAVA_HOME=/Users/xpitdn0502270/Library/Java/JavaVirtualMachines/graalvm-jdk-21.0.7/Contents/Home
+  mvn -pl nova-mall-ai/nova-mall-ai-web spring-boot:run -Dspring-boot.run.profiles=local
+  ```
+
+## 文档与测试入口
+- 订单：`http://localhost:8084/doc.html`，OpenAPI：`http://localhost:8084/v3/api-docs`
+- AI：`http://localhost:8086/doc.html`，OpenAPI：`http://localhost:8086/v3/api-docs`
+- AI 测试页（内置静态）：`http://localhost:8086/ai-stream-test.html`
+
+## AI 模块详解
+- 接口契约（`AiApi`）
+  - `POST /ai/qa`：同步回答
+  - `POST /ai/qa/stream`：SSE 流式（POST）
+  - `GET  /ai/qa/stream`：SSE 流式（GET，便于 EventSource）
+  - `POST /ai/qa/stream-chunk`：chunked 行流（JSON）
+- 核心组件
+  - `AiQaService`：同步/流式问答；先向量检索，空则回退 FAQ
+  - `LlmClient`：DashScope 调用（支持 stream=true），失败回退本地拼接
+  - `VectorRetriever` / `FaqRetriever`：上下文来源
+- 配置（`nova-mall-ai/nova-mall-ai-web/src/main/resources/application.yaml`）
+  - `ai.qa.llm-api-key`：DashScope Key
+  - `ai.qa.llm-endpoint`：默认 DashScope text-generation
+  - `ai.qa.llm-model`：默认 `qwen-turbo`
+  - `ai.qa.vector-endpoint`：可空，空则使用 FAQ
+- 流式返回格式
+  - SSE: `text/event-stream`，事件数据为 JSON `{event,data,partial}`
+  - Chunk: 行分隔 JSON，便于 fetch/ReadableStream
+  - 本地兜底可逐字分段，增强流式体验
+- 测试页使用
+  - 访问 `http://localhost:8086/ai-stream-test.html`
+  - 页内可修改 Base URL；演示 GET/POST SSE 与 chunk 流读取
+
+## 其他提示
+- 生产环境请收紧 CORS 域名、妥善管理 LLM Key，可在网关做限流/鉴权。
+- 端口可用 `--server.port=` 覆盖，AI/订单可独立启动。
 # Demo 分层模块化工程
 
 ## 项目概述
 
-这是一个基于 Spring Boot 4.0.0 的**分层模块化架构**示例项目，采用经典的四层架构设计。
+这是一个基于 Spring Boot 3.3.x 的**分层模块化**示例项目，采用经典四层/多模块架构。
+
+## 模块概览（nova-mall）
+- `nova-mall-common` / `nova-mall-common-web`
+- `nova-mall-gateway`
+- `nova-mall-order`（api/service/web）
+- `nova-mall-product`（api/service/web）
+- `nova-mall-stock`（api/service/web）
+- `nova-mall-cart`（api/service/web）
+- `nova-mall-user`（api/service/web）
+- `nova-mall-ai`
+  - `nova-mall-ai-api`：AI 接口契约（`AiApi`、`QaRequest`）
+  - `nova-mall-ai-service`：领域/基础设施（LLM、向量/FAQ 检索、`AiQaService` 实现）
+  - `nova-mall-ai-web`：Web/文档/静态测试页
+
+## 快速开始
+### 环境
+- JDK 21
+- Maven 3.9+
+
+### 常用命令
+- 全量打包：`mvn clean package -DskipTests`
+- 订单 Web：`mvn -pl nova-mall-order/nova-mall-order-web -am clean package -DskipTests`
+- AI Web：`mvn -pl nova-mall-ai/nova-mall-ai-web -am clean package -DskipTests`
+- 运行 AI Web（本地 8086）：
+  ```
+  export JAVA_HOME=/Users/xpitdn0502270/Library/Java/JavaVirtualMachines/graalvm-jdk-21.0.7/Contents/Home
+  mvn -pl nova-mall-ai/nova-mall-ai-web spring-boot:run -Dspring-boot.run.profiles=local
+  ```
+
+### 文档与测试
+- 订单文档：`http://localhost:8084/doc.html`
+- AI 文档：`http://localhost:8086/doc.html`
+- OpenAPI：
+  - 订单：`http://localhost:8084/v3/api-docs`
+  - AI：`http://localhost:8086/v3/api-docs`
+- AI 测试页（内置静态）：`http://localhost:8086/ai-stream-test.html`（可在页面顶部修改 Base URL）
+
+### AI 配置（`nova-mall-ai/nova-mall-ai-web/src/main/resources/application.yaml`）
+- `ai.qa.llm-api-key`：DashScope Key
+- `ai.qa.llm-endpoint`：可空，默认 DashScope text-generation
+- `ai.qa.llm-model`：默认 `qwen-turbo`
+- `ai.qa.vector-endpoint`：可空，空则回退 FAQ
+
+### AI 接口（`AiApi` 契约）
+- `POST /ai/qa`：同步回答
+- `POST /ai/qa/stream`：SSE 流式（POST）
+- `GET  /ai/qa/stream`：SSE 流式（GET，便于 EventSource）
+- `POST /ai/qa/stream-chunk`：chunked 行流（JSON）
+
 
 ## 本次新增/优化
 - 订单：雪花订单号、创建/回调幂等（幂等表）、乐观锁控制，支付/取消幂等处理；按用户分页，统一 `PageParam` 入参/`PageResult` 出参。
