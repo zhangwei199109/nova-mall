@@ -27,6 +27,8 @@
         <module>nova-mall-product</module>
         <module>nova-mall-cart</module>
         <module>nova-mall-stock</module>
+        <module>nova-mall-ops</module>
+        <module>nova-mall-pay</module>
 	</modules>
 	
 	<properties>

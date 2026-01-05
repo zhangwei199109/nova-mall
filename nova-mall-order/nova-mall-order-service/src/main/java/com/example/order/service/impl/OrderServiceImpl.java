@@ -9,6 +9,8 @@ import com.example.common.exception.BusinessException;
 import com.example.order.api.dto.CreateOrderRequest;
 import com.example.order.api.dto.OrderDTO;
 import com.example.order.api.dto.OrderItemDTO;
+import com.example.order.api.dto.OrderQuery;
+import com.example.order.api.dto.OrderStatusUpdateRequest;
 import com.example.order.service.OrderAppService;
 import com.example.order.service.config.SnowflakeIdGenerator;
 import com.example.order.service.entity.Order;
@@ -45,7 +47,7 @@ public class OrderServiceImpl implements OrderAppService {
     }
 
     @Override
-    public PageResult<OrderDTO> list(Long userId, PageParam pageParam) {
+    public PageResult<OrderDTO> list(Long userId, PageParam pageParam, OrderQuery query) {
         if (userId == null) {
             throw new BusinessException(400, "用户ID不能为空");
         }
@@ -53,6 +55,7 @@ public class OrderServiceImpl implements OrderAppService {
         Page<Order> mpPage = new Page<>(normalized.getPageNo(), normalized.getPageSize());
         Page<Order> result = orderMapper.selectPage(mpPage, new LambdaQueryWrapper<Order>()
                 .eq(Order::getUserId, userId)
+                .eq(query != null && StringUtils.hasText(query.getStatus()), Order::getStatus, query.getStatus())
                 .orderByDesc(Order::getId));
         List<OrderDTO> records = result.getRecords().stream()
                 .map(this::toDTO)
@@ -130,7 +133,11 @@ public class OrderServiceImpl implements OrderAppService {
     }
 
     @Override
-    public boolean delete(Long id) {
+    public boolean delete(Long id, Long userId) {
+        Order order = orderMapper.selectById(id);
+        if (order == null || !order.getUserId().equals(userId)) {
+            return false;
+        }
         return orderMapper.deleteById(id) > 0;
     }
 
@@ -149,16 +156,24 @@ public class OrderServiceImpl implements OrderAppService {
     }
 
     @Override
-    @Transactional
-    public boolean pay(Long id, boolean fromCallback) {
-        return pay(id, fromCallback, null);
+    public boolean updateStatusInternal(Long id, OrderStatusUpdateRequest req) {
+        if (req == null || !StringUtils.hasText(req.getStatus())) {
+            throw new BusinessException(400, "状态不能为空");
+        }
+        return updateStatus(id, req.getStatus());
     }
 
     @Override
     @Transactional
-    public boolean pay(Long id, boolean fromCallback, String callbackKey) {
+    public boolean pay(Long id, Long userId, boolean fromCallback) {
+        return pay(id, userId, fromCallback, null);
+    }
+
+    @Override
+    @Transactional
+    public boolean pay(Long id, Long userId, boolean fromCallback, String callbackKey) {
         Order order = orderMapper.selectById(id);
-        if (order == null) {
+        if (order == null || !order.getUserId().equals(userId)) {
             throw new BusinessException(404, "订单不存在");
         }
         OrderStatus current = parseStatus(order.getStatus())
@@ -193,9 +208,9 @@ public class OrderServiceImpl implements OrderAppService {
 
     @Override
     @Transactional
-    public boolean cancel(Long id) {
+    public boolean cancel(Long id, Long userId) {
         Order order = orderMapper.selectById(id);
-        if (order == null) {
+        if (order == null || !order.getUserId().equals(userId)) {
             throw new BusinessException(404, "订单不存在");
         }
         OrderStatus current = parseStatus(order.getStatus())

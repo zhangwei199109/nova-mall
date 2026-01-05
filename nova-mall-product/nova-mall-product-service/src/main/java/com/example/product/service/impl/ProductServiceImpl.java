@@ -1,15 +1,21 @@
 package com.example.product.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.example.common.dto.PageParam;
+import com.example.common.dto.PageResult;
 import com.example.common.exception.BusinessException;
 import com.example.product.api.dto.ProductDTO;
+import com.example.product.api.dto.ProductQuery;
 import com.example.product.api.dto.ProductRecDTO;
 import com.example.product.service.ProductAppService;
 import com.example.product.service.entity.Product;
 import com.example.product.service.mapper.ProductMapper;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
+import java.math.BigDecimal;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -25,8 +31,43 @@ public class ProductServiceImpl implements ProductAppService {
 
     @Override
     public List<ProductDTO> listProducts() {
-        List<Product> list = productMapper.selectList(new LambdaQueryWrapper<>());
+        List<Product> list = productMapper.selectList(new LambdaQueryWrapper<Product>()
+                .eq(Product::getDeleted, 0));
         return list.stream().map(this::toDTO).collect(Collectors.toList());
+    }
+
+    @Override
+    public PageResult<ProductDTO> page(PageParam pageParam, ProductQuery query) {
+        PageParam norm = pageParam == null ? new PageParam(1, 10).normalized(1, 10, 100)
+                : pageParam.normalized(1, 10, 100);
+        LambdaQueryWrapper<Product> wrapper = new LambdaQueryWrapper<Product>()
+                .eq(Product::getDeleted, 0);
+        Integer status = query == null ? null : query.getStatus();
+        if (status == null) {
+            wrapper.eq(Product::getStatus, 1); // 默认筛选上架
+        } else {
+            wrapper.eq(Product::getStatus, status);
+        }
+        if (query != null && StringUtils.hasText(query.getKeyword())) {
+            wrapper.like(Product::getName, query.getKeyword());
+        }
+        if (query != null && query.getMinPrice() != null) {
+            wrapper.ge(Product::getPrice, query.getMinPrice());
+        }
+        if (query != null && query.getMaxPrice() != null) {
+            wrapper.le(Product::getPrice, query.getMaxPrice());
+        }
+        if (query != null && query.getMinPrice() != null && query.getMaxPrice() != null
+                && query.getMinPrice().compareTo(query.getMaxPrice()) > 0) {
+            throw new BusinessException(400, "价格区间不合法");
+        }
+        wrapper.orderByDesc(Product::getUpdateTime);
+        Page<Product> page = productMapper.selectPage(
+                new Page<>(norm.getPageNo(), norm.getPageSize()), wrapper);
+        List<ProductDTO> records = page.getRecords().stream()
+                .map(this::toDTO)
+                .collect(Collectors.toList());
+        return new PageResult<>(records, page.getTotal(), page.getCurrent(), page.getSize());
     }
 
     @Override
@@ -43,6 +84,8 @@ public class ProductServiceImpl implements ProductAppService {
         Product entity = new Product();
         BeanUtils.copyProperties(dto, entity);
         entity.setId(null);
+        applyDefaults(entity);
+        validateForSave(entity);
         productMapper.insert(entity);
         return toDTO(productMapper.selectById(entity.getId()));
     }
@@ -57,8 +100,33 @@ public class ProductServiceImpl implements ProductAppService {
             throw new BusinessException(404, "商品不存在");
         }
         BeanUtils.copyProperties(dto, exist);
+        applyDefaults(exist);
+        validateForSave(exist);
         productMapper.updateById(exist);
         return toDTO(productMapper.selectById(dto.getId()));
+    }
+
+    @Override
+    public boolean onShelf(Long id) {
+        Product exist = productMapper.selectById(id);
+        if (exist == null) {
+            throw new BusinessException(404, "商品不存在");
+        }
+        if (exist.getStock() == null || exist.getStock() <= 0) {
+            throw new BusinessException(400, "库存需大于0才能上架");
+        }
+        exist.setStatus(1);
+        return productMapper.updateById(exist) > 0;
+    }
+
+    @Override
+    public boolean offShelf(Long id) {
+        Product exist = productMapper.selectById(id);
+        if (exist == null) {
+            throw new BusinessException(404, "商品不存在");
+        }
+        exist.setStatus(0);
+        return productMapper.updateById(exist) > 0;
     }
 
     @Override
@@ -72,17 +140,23 @@ public class ProductServiceImpl implements ProductAppService {
     @Override
     public List<ProductRecDTO> recommendByProduct(Long productId, Integer limit) {
         int realLimit = (limit == null || limit < 1) ? 6 : Math.min(limit, 20);
-        // 简单规则：价格相近 + ID排序；若无基准则随机排序
         Product base = productId == null ? null : productMapper.selectById(productId);
-        List<Product> candidates = productMapper.selectList(new LambdaQueryWrapper<>());
+        if (productId != null && base == null) {
+            throw new BusinessException(404, "商品不存在");
+        }
+        final Product baseRef = base;
+        LambdaQueryWrapper<Product> wrapper = new LambdaQueryWrapper<Product>()
+                .eq(Product::getDeleted, 0)
+                .eq(Product::getStatus, 1)
+                .ne(productId != null, Product::getId, productId);
+        List<Product> candidates = productMapper.selectList(wrapper);
         return candidates.stream()
-                .filter(p -> !p.getId().equals(productId))
-                .sorted(buildComparator(base))
+                .sorted(buildComparator(baseRef))
                 .limit(realLimit)
                 .map(p -> {
                     ProductRecDTO rec = new ProductRecDTO();
                     rec.setProductId(p.getId());
-                    rec.setReason(reason(base, p));
+                    rec.setReason(reason(baseRef, p));
                     rec.setScore(Math.random());
                     return rec;
                 })
@@ -115,6 +189,25 @@ public class ProductServiceImpl implements ProductAppService {
         ProductDTO dto = new ProductDTO();
         BeanUtils.copyProperties(p, dto);
         return dto;
+    }
+
+    private void applyDefaults(Product entity) {
+        if (entity.getStatus() == null) {
+            entity.setStatus(1);
+        }
+    }
+
+    private void validateForSave(Product entity) {
+        if (entity.getPrice() == null || entity.getPrice().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new BusinessException(400, "价格必须大于0");
+        }
+        if (entity.getStock() == null || entity.getStock() < 0) {
+            throw new BusinessException(400, "库存不能为负");
+        }
+        if (entity.getStatus() != null && entity.getStatus() == 1
+                && (entity.getStock() == null || entity.getStock() <= 0)) {
+            throw new BusinessException(400, "上架商品库存必须大于0");
+        }
     }
 }
 

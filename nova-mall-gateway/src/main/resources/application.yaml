@@ -32,6 +32,14 @@ spring:
           - /stock/doc.html
           - /stock/v3/api-docs
           - /stock/swagger-ui
+          - /pay/doc.html
+          - /pay/v3/api-docs
+          - /pay/swagger-ui
+          - /refund/doc.html
+          - /refund/v3/api-docs
+          - /refund/swagger-ui
+          - /pay/notify/alipay
+          - /refund/notify/alipay
           - /actuator
           - /fallback
       globalcors:
@@ -167,6 +175,26 @@ spring:
                 key-resolver: "#{@ipKeyResolver}"
                 redis-rate-limiter.replenishRate: 30
                 redis-rate-limiter.burstCapacity: 60
+        - id: pay-service
+          uri: http://localhost:8095
+          predicates:
+            - Path=/pay/**,/refund/**,/pay/doc.html,/pay/v3/api-docs/**,/pay/swagger-ui.html,/pay/swagger-ui/**,/pay/webjars/**,/refund/doc.html,/refund/v3/api-docs/**,/refund/swagger-ui.html,/refund/swagger-ui/**,/refund/webjars/**
+          filters:
+            - StripPrefix=0
+            - name: Retry
+              args:
+                retries: 2
+                statuses:
+                  - BAD_GATEWAY
+                  - INTERNAL_SERVER_ERROR
+                  - SERVICE_UNAVAILABLE
+                  - GATEWAY_TIMEOUT
+                methods:
+                  - GET
+            - name: CircuitBreaker
+              args:
+                name: payCircuitBreaker
+                fallbackUri: forward:/fallback/pay
       default-filters:
         - AddResponseHeader=X-Gateway, demo-gateway
       local-rate-limit:

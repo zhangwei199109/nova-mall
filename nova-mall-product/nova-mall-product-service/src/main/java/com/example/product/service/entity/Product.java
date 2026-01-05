@@ -20,6 +20,11 @@ public class Product {
 
     private Integer stock;
 
+    /**
+     * 上架状态：1 上架，0 下架
+     */
+    private Integer status;
+
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createTime;
 

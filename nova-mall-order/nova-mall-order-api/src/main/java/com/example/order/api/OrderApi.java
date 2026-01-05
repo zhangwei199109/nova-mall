@@ -5,6 +5,8 @@ import com.example.common.dto.PageResult;
 import com.example.common.dto.Result;
 import com.example.order.api.dto.CreateOrderRequest;
 import com.example.order.api.dto.OrderDTO;
+import com.example.order.api.dto.OrderQuery;
+import com.example.order.api.dto.OrderStatusUpdateRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -16,7 +18,8 @@ public interface OrderApi {
 
     @Operation(summary = "订单列表（按当前用户分页）")
     @GetMapping("/list")
-    Result<PageResult<OrderDTO>> list(@ModelAttribute PageParam pageParam);
+    Result<PageResult<OrderDTO>> list(@ModelAttribute PageParam pageParam,
+                                      @ModelAttribute OrderQuery query);
 
     @Operation(summary = "订单详情")
     @GetMapping("/{id}")
@@ -43,5 +46,10 @@ public interface OrderApi {
     @Operation(summary = "删除订单")
     @DeleteMapping("/{id}")
     Result<Void> delete(@PathVariable Long id);
+
+    @Operation(summary = "内部：支付/退款状态更新")
+    @PostMapping("/{id}/status")
+    Result<Boolean> updateStatus(@PathVariable Long id,
+                                 @Valid @RequestBody OrderStatusUpdateRequest req);
 }
 

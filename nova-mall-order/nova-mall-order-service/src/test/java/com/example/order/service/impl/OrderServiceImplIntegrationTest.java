@@ -57,12 +57,12 @@ class OrderServiceImplIntegrationTest {
     void pay_isIdempotentAfterPaid() {
         Order order = insertOrder("CREATED");
 
-        boolean first = orderAppService.pay(order.getId(), false);
+        boolean first = orderAppService.pay(order.getId(), order.getUserId(), false);
         assertThat(first).isTrue();
         OrderDTO paid = orderAppService.getById(order.getId(), order.getUserId());
         assertThat(paid.getStatus()).isEqualTo("PAID");
 
-        boolean second = orderAppService.pay(order.getId(), false);
+        boolean second = orderAppService.pay(order.getId(), order.getUserId(), false);
         assertThat(second).isTrue();
         OrderDTO stillPaid = orderAppService.getById(order.getId(), order.getUserId());
         assertThat(stillPaid.getStatus()).isEqualTo("PAID");
@@ -77,7 +77,7 @@ class OrderServiceImplIntegrationTest {
         log.setCallbackKey("cb-1");
         callbackLogMapper.insert(log);
 
-        boolean result = orderAppService.pay(order.getId(), true, "cb-1");
+        boolean result = orderAppService.pay(order.getId(), order.getUserId(), true, "cb-1");
         assertThat(result).isTrue();
         // 状态未变化（首次回调因幂等直接返回）
         OrderDTO dto = orderAppService.getById(order.getId(), order.getUserId());
@@ -85,7 +85,7 @@ class OrderServiceImplIntegrationTest {
         assertThat(callbackLogMapper.selectCount(null)).isEqualTo(1L);
 
         // 正常支付仍可成功
-        boolean payResult = orderAppService.pay(order.getId(), false);
+        boolean payResult = orderAppService.pay(order.getId(), order.getUserId(), false);
         assertThat(payResult).isTrue();
         OrderDTO paid = orderAppService.getById(order.getId(), order.getUserId());
         assertThat(paid.getStatus()).isEqualTo("PAID");
@@ -103,7 +103,7 @@ class OrderServiceImplIntegrationTest {
         for (int i = 0; i < threads; i++) {
             pool.submit(() -> {
                 try {
-                    boolean ok = orderAppService.pay(order.getId(), false);
+                    boolean ok = orderAppService.pay(order.getId(), order.getUserId(), false);
                     if (ok) {
                         success.incrementAndGet();
                     }

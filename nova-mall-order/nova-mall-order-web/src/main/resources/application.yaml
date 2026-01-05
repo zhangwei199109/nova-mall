@@ -40,7 +40,9 @@ springdoc:
     url: ./v3/api-docs
     config-url: ./v3/api-docs/swagger-config
   packages-to-scan: com.example.order.web.controller
-  paths-to-match: /order/**
+  paths-to-match:
+    - /order/**
+    - /seckill/**
 
 knife4j:
   enable: true
@@ -57,4 +59,29 @@ logging:
   level:
     com.example: DEBUG
     com.example.order.service.mapper: DEBUG
+
+service:
+  ops:
+    base-url: http://localhost:8090
+    internal-token: demo-internal-token
+
+# 可选：从配置加载秒杀活动（如不配置则使用内置示例）
+seckill:
+  activities:
+    - id: 1001
+      product-id: 1
+      title: "iPhone 15 秒杀"
+      seckill-price: 5999.00
+      total-stock: 30
+      limit-per-user: 1
+      start-time: 2025-12-24T00:00:00
+      end-time: 2025-12-31T23:59:59
+    - id: 1002
+      product-id: 3
+      title: "AirPods Pro 闪购"
+      seckill-price: 999.00
+      total-stock: 50
+      limit-per-user: 2
+      start-time: 2025-12-24T00:00:00
+      end-time: 2025-12-31T23:59:59
 

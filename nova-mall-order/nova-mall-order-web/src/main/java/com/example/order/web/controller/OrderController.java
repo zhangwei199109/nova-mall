@@ -8,6 +8,8 @@ import com.example.common.web.AuthContext;
 import com.example.order.api.OrderApi;
 import com.example.order.api.dto.CreateOrderRequest;
 import com.example.order.api.dto.OrderDTO;
+import com.example.order.api.dto.OrderQuery;
+import com.example.order.api.dto.OrderStatusUpdateRequest;
 import com.example.order.service.OrderAppService;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.RestController;
@@ -25,9 +27,9 @@ public class OrderController implements OrderApi {
     }
 
     @Override
-    public Result<PageResult<OrderDTO>> list(PageParam pageParam) {
+    public Result<PageResult<OrderDTO>> list(PageParam pageParam, OrderQuery query) {
         Long userId = authContext.currentUserId();
-        return Result.success(orderAppService.list(userId, pageParam));
+        return Result.success(orderAppService.list(userId, pageParam, query));
     }
 
     @Override
@@ -47,25 +49,34 @@ public class OrderController implements OrderApi {
 
     @Override
     public Result<Boolean> pay(Long id) {
-        return Result.success(orderAppService.pay(id, false));
+        Long userId = authContext.currentUserId();
+        return Result.success(orderAppService.pay(id, userId, false));
     }
 
     @Override
     public Result<Boolean> payCallback(Long id, String callbackKey) {
-        return Result.success(orderAppService.pay(id, true, callbackKey));
+        Long userId = authContext.currentUserId();
+        return Result.success(orderAppService.pay(id, userId, true, callbackKey));
     }
 
     @Override
     public Result<Boolean> cancel(Long id) {
-        return Result.success(orderAppService.cancel(id));
+        Long userId = authContext.currentUserId();
+        return Result.success(orderAppService.cancel(id, userId));
     }
 
     @Override
     public Result<Void> delete(Long id) {
-        boolean ok = orderAppService.delete(id);
+        Long userId = authContext.currentUserId();
+        boolean ok = orderAppService.delete(id, userId);
         if (!ok) {
             throw new BusinessException(404, "订单不存在或已删除");
         }
         return Result.success();
+    }
+
+    @Override
+    public Result<Boolean> updateStatus(Long id, @Valid OrderStatusUpdateRequest req) {
+        return Result.success(orderAppService.updateStatusInternal(id, req));
     }
 }

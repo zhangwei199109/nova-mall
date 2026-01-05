@@ -67,3 +67,16 @@ spring:
 - 配置 `ai.qa.springAiBaseUrl`（自定义属性）便于业务日志打印 baseUrl（非功能必需）。  
 - 若后续改回自动 ChatClient，确保 base-url 正确后可移除手工配置与拦截器。
 
+
+
+
+
+
+
+
+
+
+
+
+
+

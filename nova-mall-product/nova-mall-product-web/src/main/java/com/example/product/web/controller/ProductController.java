@@ -1,9 +1,12 @@
 package com.example.product.web.controller;
 
+import com.example.common.dto.PageParam;
+import com.example.common.dto.PageResult;
 import com.example.common.dto.Result;
 import com.example.product.api.ProductApi;
 import com.example.product.api.dto.ProductDTO;
 import com.example.product.api.dto.ProductRecDTO;
+import com.example.product.api.dto.ProductQuery;
 import com.example.product.service.ProductAppService;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.RestController;
@@ -25,6 +28,11 @@ public class ProductController implements ProductApi {
     }
 
     @Override
+    public Result<PageResult<ProductDTO>> page(PageParam pageParam, ProductQuery query) {
+        return Result.success(productAppService.page(pageParam, query));
+    }
+
+    @Override
     public Result<ProductDTO> get(Long id) {
         return Result.success(productAppService.getById(id));
     }
@@ -43,6 +51,16 @@ public class ProductController implements ProductApi {
     @Override
     public Result<Boolean> delete(Long id) {
         return Result.success(productAppService.delete(id));
+    }
+
+    @Override
+    public Result<Boolean> onShelf(Long id) {
+        return Result.success(productAppService.onShelf(id));
+    }
+
+    @Override
+    public Result<Boolean> offShelf(Long id) {
+        return Result.success(productAppService.offShelf(id));
     }
 
     @Override

@@ -4,10 +4,12 @@ import com.example.common.dto.PageParam;
 import com.example.common.dto.PageResult;
 import com.example.order.api.dto.CreateOrderRequest;
 import com.example.order.api.dto.OrderDTO;
+import com.example.order.api.dto.OrderQuery;
+import com.example.order.api.dto.OrderStatusUpdateRequest;
 
 public interface OrderAppService {
 
-    PageResult<OrderDTO> list(Long userId, PageParam pageParam);
+    PageResult<OrderDTO> list(Long userId, PageParam pageParam, OrderQuery query);
 
     OrderDTO getById(Long id, Long userId);
 
@@ -15,13 +17,15 @@ public interface OrderAppService {
 
     OrderDTO create(CreateOrderRequest req, OrderDTO computed, String idemKey);
 
-    boolean delete(Long id);
+    boolean delete(Long id, Long userId);
 
     boolean updateStatus(Long id, String status);
 
-    boolean pay(Long id, boolean fromCallback);
+    boolean updateStatusInternal(Long id, OrderStatusUpdateRequest req);
 
-    boolean pay(Long id, boolean fromCallback, String callbackKey);
+    boolean pay(Long id, Long userId, boolean fromCallback);
 
-    boolean cancel(Long id);
+    boolean pay(Long id, Long userId, boolean fromCallback, String callbackKey);
+
+    boolean cancel(Long id, Long userId);
 }
