@@ -21,6 +21,31 @@ public class Product {
     private Integer stock;
 
     /**
+     * 类目ID，可用于多维筛选。
+     */
+    private Long categoryId;
+
+    /**
+     * 品牌名称。
+     */
+    private String brand;
+
+    /**
+     * 标签，逗号分隔。
+     */
+    private String tags;
+
+    /**
+     * 累计销量。
+     */
+    private Integer soldCount;
+
+    /**
+     * 累计浏览量。
+     */
+    private Integer viewCount;
+
+    /**
      * 上架状态：1 上架，0 下架
      */
     private Integer status;

@@ -33,6 +33,11 @@ public class ProductController implements ProductApi {
     }
 
     @Override
+    public Result<List<ProductDTO>> top(Integer limit) {
+        return Result.success(productAppService.topBySales(limit));
+    }
+
+    @Override
     public Result<ProductDTO> get(Long id) {
         return Result.success(productAppService.getById(id));
     }
@@ -66,6 +71,11 @@ public class ProductController implements ProductApi {
     @Override
     public Result<List<ProductRecDTO>> recommendByProduct(Long productId, Integer limit) {
         return Result.success(productAppService.recommendByProduct(productId, limit));
+    }
+
+    @Override
+    public Result<Boolean> adjustAfterPay(List<com.example.product.api.dto.ProductAdjustRequest> items) {
+        return Result.success(productAppService.adjustAfterPay(items));
     }
 }
 

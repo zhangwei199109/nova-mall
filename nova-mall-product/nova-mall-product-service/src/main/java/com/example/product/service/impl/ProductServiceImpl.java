@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.common.dto.PageParam;
 import com.example.common.dto.PageResult;
 import com.example.common.exception.BusinessException;
+import com.example.product.api.dto.ProductAdjustRequest;
 import com.example.product.api.dto.ProductDTO;
 import com.example.product.api.dto.ProductQuery;
 import com.example.product.api.dto.ProductRecDTO;
@@ -17,7 +18,9 @@ import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -51,6 +54,12 @@ public class ProductServiceImpl implements ProductAppService {
         if (query != null && StringUtils.hasText(query.getKeyword())) {
             wrapper.like(Product::getName, query.getKeyword());
         }
+        if (query != null && query.getCategoryId() != null) {
+            wrapper.eq(Product::getCategoryId, query.getCategoryId());
+        }
+        if (query != null && StringUtils.hasText(query.getBrand())) {
+            wrapper.eq(Product::getBrand, query.getBrand());
+        }
         if (query != null && query.getMinPrice() != null) {
             wrapper.ge(Product::getPrice, query.getMinPrice());
         }
@@ -61,7 +70,19 @@ public class ProductServiceImpl implements ProductAppService {
                 && query.getMinPrice().compareTo(query.getMaxPrice()) > 0) {
             throw new BusinessException(400, "价格区间不合法");
         }
-        wrapper.orderByDesc(Product::getUpdateTime);
+        // 排序
+        String sortBy = query == null ? null : query.getSortBy();
+        String order = query == null ? null : query.getOrder();
+        boolean asc = "asc".equalsIgnoreCase(order);
+        if ("price".equalsIgnoreCase(sortBy)) {
+            wrapper.orderBy(true, asc, Product::getPrice);
+        } else if ("sales".equalsIgnoreCase(sortBy)) {
+            wrapper.orderBy(true, !asc, Product::getSoldCount); // 默认销量高在前
+        } else if ("newest".equalsIgnoreCase(sortBy)) {
+            wrapper.orderBy(true, false, Product::getCreateTime);
+        } else {
+            wrapper.orderByDesc(Product::getUpdateTime);
+        }
         Page<Product> page = productMapper.selectPage(
                 new Page<>(norm.getPageNo(), norm.getPageSize()), wrapper);
         List<ProductDTO> records = page.getRecords().stream()
@@ -76,6 +97,10 @@ public class ProductServiceImpl implements ProductAppService {
         if (p == null) {
             throw new BusinessException(404, "商品不存在");
         }
+        // 浏览量+1（简单累加，可后续接入异步或埋点）
+        productMapper.update(null, new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<Product>()
+                .eq(Product::getId, id)
+                .set(Product::getViewCount, (p.getViewCount() == null ? 0 : p.getViewCount()) + 1));
         return toDTO(p);
     }
 
@@ -138,6 +163,46 @@ public class ProductServiceImpl implements ProductAppService {
     }
 
     @Override
+    public List<ProductDTO> topBySales(Integer limit) {
+        int realLimit = (limit == null || limit < 1) ? 10 : Math.min(limit, 50);
+        List<Product> list = productMapper.selectList(new LambdaQueryWrapper<Product>()
+                .eq(Product::getDeleted, 0)
+                .eq(Product::getStatus, 1)
+                .orderByDesc(Product::getSoldCount)
+                .last("limit " + realLimit));
+        return list.stream().map(this::toDTO).collect(Collectors.toList());
+    }
+
+    @Override
+    public boolean adjustAfterPay(List<ProductAdjustRequest> items) {
+        if (items == null || items.isEmpty()) {
+            return true;
+        }
+        // 汇总相同商品数量，减少多次更新
+        Map<Long, Integer> aggregated = new HashMap<>();
+        for (ProductAdjustRequest req : items) {
+            if (req.getProductId() == null || req.getQuantity() == null || req.getQuantity() < 1) {
+                throw new BusinessException(400, "商品ID与数量不能为空");
+            }
+            aggregated.merge(req.getProductId(), req.getQuantity(), Integer::sum);
+        }
+        for (Map.Entry<Long, Integer> entry : aggregated.entrySet()) {
+            Long productId = entry.getKey();
+            Integer qty = entry.getValue();
+            int updated = productMapper.update(null, new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<Product>()
+                    .eq(Product::getId, productId)
+                    .eq(Product::getDeleted, 0)
+                    .ge(Product::getStock, qty)
+                    .setSql("stock = stock - " + qty)
+                    .setSql("sold_count = sold_count + " + qty));
+            if (updated == 0) {
+                throw new BusinessException(409, "商品库存不足或已下架，productId=" + productId);
+            }
+        }
+        return true;
+    }
+
+    @Override
     public List<ProductRecDTO> recommendByProduct(Long productId, Integer limit) {
         int realLimit = (limit == null || limit < 1) ? 6 : Math.min(limit, 20);
         Product base = productId == null ? null : productMapper.selectById(productId);
@@ -194,6 +259,12 @@ public class ProductServiceImpl implements ProductAppService {
     private void applyDefaults(Product entity) {
         if (entity.getStatus() == null) {
             entity.setStatus(1);
+        }
+        if (entity.getSoldCount() == null) {
+            entity.setSoldCount(0);
+        }
+        if (entity.getViewCount() == null) {
+            entity.setViewCount(0);
         }
     }
 

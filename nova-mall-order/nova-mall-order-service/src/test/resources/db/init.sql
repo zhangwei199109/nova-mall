@@ -7,6 +7,8 @@ CREATE TABLE `orders` (
   `user_id` bigint NOT NULL COMMENT '用户ID',
   `amount` decimal(18,2) NOT NULL COMMENT '订单金额',
   `status` varchar(32) DEFAULT 'CREATED' COMMENT '订单状态',
+  `ship_time` datetime DEFAULT NULL COMMENT '发货时间',
+  `finish_time` datetime DEFAULT NULL COMMENT '完成时间',
   `version` int NOT NULL DEFAULT '0' COMMENT '乐观锁版本号',
   `deleted` tinyint DEFAULT '0' COMMENT '逻辑删除：0-未删除，1-已删除',
   `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
@@ -40,6 +42,22 @@ CREATE TABLE `order_callback_log` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_order_callback` (`order_id`, `callback_key`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='支付回调幂等记录';
+
+DROP TABLE IF EXISTS `order_inventory_tasks`;
+CREATE TABLE `order_inventory_tasks` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `order_id` bigint NOT NULL COMMENT '订单ID',
+  `product_id` bigint NOT NULL COMMENT '商品ID',
+  `quantity` int NOT NULL COMMENT '数量',
+  `status` varchar(32) NOT NULL DEFAULT 'INIT' COMMENT '任务状态',
+  `retry_count` int NOT NULL DEFAULT 0 COMMENT '重试次数',
+  `last_error` varchar(500) DEFAULT NULL COMMENT '最后错误信息',
+  `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_order_product` (`order_id`, `product_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='支付扣减库存任务表';
+
 
 
 

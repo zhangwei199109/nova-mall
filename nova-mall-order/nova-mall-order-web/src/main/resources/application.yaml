@@ -65,6 +65,17 @@ service:
     base-url: http://localhost:8090
     internal-token: demo-internal-token
 
+# 订单生命周期配置
+order:
+  lifecycle:
+    payment-timeout-minutes: 30   # 未支付超时关闭（分钟）
+    scan-interval-ms: 300000      # 扫描周期（毫秒），默认5分钟
+    auto-receive-days: 7          # 发货后自动收货天数
+  inventory-deduct:
+    max-retry: 5                  # 异步扣减最大重试次数
+    batch-size: 50                # 每批处理任务数
+    scan-interval-ms: 30000       # 任务扫描周期，默认30秒
+
 # 可选：从配置加载秒杀活动（如不配置则使用内置示例）
 seckill:
   activities:

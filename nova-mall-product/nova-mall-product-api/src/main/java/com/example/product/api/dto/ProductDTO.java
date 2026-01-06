@@ -34,6 +34,21 @@ public class ProductDTO {
     @Min(value = 0, message = "库存不能为负")
     private Integer stock;
 
+    @Schema(description = "类目ID")
+    private Long categoryId;
+
+    @Schema(description = "品牌")
+    private String brand;
+
+    @Schema(description = "标签，逗号分隔")
+    private String tags;
+
+    @Schema(description = "累计销量")
+    private Integer soldCount;
+
+    @Schema(description = "浏览量")
+    private Integer viewCount;
+
     @Schema(description = "商品状态，上架=1，下架=0", example = "1")
     private Integer status;
 }

@@ -11,6 +11,7 @@ import com.example.order.api.dto.OrderDTO;
 import com.example.order.api.dto.OrderItemDTO;
 import com.example.order.api.dto.OrderQuery;
 import com.example.order.api.dto.OrderStatusUpdateRequest;
+import com.example.order.service.entity.OrderInventoryTask;
 import com.example.order.service.OrderAppService;
 import com.example.order.service.config.SnowflakeIdGenerator;
 import com.example.order.service.entity.Order;
@@ -18,6 +19,7 @@ import com.example.order.service.entity.OrderItem;
 import com.example.order.service.entity.OrderCallbackLog;
 import com.example.order.service.enums.OrderStatus;
 import com.example.order.service.mapper.OrderCallbackLogMapper;
+import com.example.order.service.mapper.OrderInventoryTaskMapper;
 import com.example.order.service.mapper.OrderItemMapper;
 import com.example.order.service.mapper.OrderMapper;
 import org.springframework.dao.DuplicateKeyException;
@@ -26,6 +28,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.Map;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -36,14 +40,17 @@ public class OrderServiceImpl implements OrderAppService {
     private final OrderItemMapper orderItemMapper;
     private final SnowflakeIdGenerator snowflakeIdGenerator;
     private final OrderCallbackLogMapper orderCallbackLogMapper;
+    private final OrderInventoryTaskMapper orderInventoryTaskMapper;
 
     public OrderServiceImpl(OrderMapper orderMapper, OrderItemMapper orderItemMapper,
                             SnowflakeIdGenerator snowflakeIdGenerator,
-                            OrderCallbackLogMapper orderCallbackLogMapper) {
+                            OrderCallbackLogMapper orderCallbackLogMapper,
+                            OrderInventoryTaskMapper orderInventoryTaskMapper) {
         this.orderMapper = orderMapper;
         this.orderItemMapper = orderItemMapper;
         this.snowflakeIdGenerator = snowflakeIdGenerator;
         this.orderCallbackLogMapper = orderCallbackLogMapper;
+        this.orderInventoryTaskMapper = orderInventoryTaskMapper;
     }
 
     @Override
@@ -203,6 +210,24 @@ public class OrderServiceImpl implements OrderAppService {
         if (updated == 0) {
             throw new BusinessException(409, "支付冲突，请重试");
         }
+        // 异步扣减库存、累加销量：写入任务表
+        List<OrderItem> items = orderItemMapper.selectList(new LambdaQueryWrapper<OrderItem>()
+                .eq(OrderItem::getOrderId, order.getId()));
+        Map<Long, Integer> aggregated = items.stream()
+                .collect(Collectors.toMap(OrderItem::getProductId, OrderItem::getQuantity, Integer::sum));
+        for (Map.Entry<Long, Integer> e : aggregated.entrySet()) {
+            OrderInventoryTask task = new OrderInventoryTask();
+            task.setOrderId(order.getId());
+            task.setProductId(e.getKey());
+            task.setQuantity(e.getValue());
+            task.setStatus("INIT");
+            task.setRetryCount(0);
+            try {
+                orderInventoryTaskMapper.insert(task);
+            } catch (DuplicateKeyException ex) {
+                // 已存在相同任务，忽略
+            }
+        }
         return true;
     }
 
@@ -233,6 +258,62 @@ public class OrderServiceImpl implements OrderAppService {
         return true;
     }
 
+    @Override
+    @Transactional
+    public boolean ship(Long id) {
+        Order order = orderMapper.selectById(id);
+        if (order == null) {
+            throw new BusinessException(404, "订单不存在");
+        }
+        OrderStatus current = parseStatus(order.getStatus())
+                .orElseThrow(() -> new BusinessException(400, "订单状态非法"));
+        if (current == OrderStatus.SHIPPED) {
+            return true; // 幂等
+        }
+        if (!OrderStatus.canShip(current)) {
+            throw new BusinessException(400, "当前状态不可发货");
+        }
+        int updated = orderMapper.update(null, new LambdaUpdateWrapper<Order>()
+                .eq(Order::getId, id)
+                .eq(Order::getStatus, OrderStatus.PAID.name())
+                .eq(Order::getVersion, order.getVersion())
+                .set(Order::getStatus, OrderStatus.SHIPPED.name())
+                .set(Order::getShipTime, LocalDateTime.now())
+                .set(Order::getVersion, order.getVersion() + 1));
+        if (updated == 0) {
+            throw new BusinessException(409, "发货冲突，请重试");
+        }
+        return true;
+    }
+
+    @Override
+    @Transactional
+    public boolean finish(Long id, boolean auto) {
+        Order order = orderMapper.selectById(id);
+        if (order == null) {
+            throw new BusinessException(404, "订单不存在");
+        }
+        OrderStatus current = parseStatus(order.getStatus())
+                .orElseThrow(() -> new BusinessException(400, "订单状态非法"));
+        if (current == OrderStatus.FINISHED) {
+            return true; // 幂等
+        }
+        if (!OrderStatus.canFinish(current)) {
+            throw new BusinessException(400, "当前状态不可收货");
+        }
+        int updated = orderMapper.update(null, new LambdaUpdateWrapper<Order>()
+                .eq(Order::getId, id)
+                .eq(Order::getStatus, OrderStatus.SHIPPED.name())
+                .eq(Order::getVersion, order.getVersion())
+                .set(Order::getStatus, OrderStatus.FINISHED.name())
+                .set(Order::getFinishTime, LocalDateTime.now())
+                .set(Order::getVersion, order.getVersion() + 1));
+        if (updated == 0) {
+            throw new BusinessException(409, "收货冲突，请重试");
+        }
+        return true;
+    }
+
     private OrderDTO toDTO(Order order) {
         OrderDTO dto = new OrderDTO();
         dto.setId(order.getId());
@@ -240,6 +321,8 @@ public class OrderServiceImpl implements OrderAppService {
         dto.setUserId(order.getUserId());
         dto.setAmount(order.getAmount());
         dto.setStatus(order.getStatus());
+        dto.setShipTime(order.getShipTime());
+        dto.setFinishTime(order.getFinishTime());
         List<OrderItem> items = orderItemMapper.selectList(new LambdaQueryWrapper<OrderItem>()
                 .eq(OrderItem::getOrderId, order.getId()));
         dto.setItems(items.stream().map(this::toItemDTO).collect(Collectors.toList()));

@@ -6,6 +6,7 @@ import com.example.common.dto.PageResult;
 import com.example.product.api.dto.ProductDTO;
 import com.example.product.api.dto.ProductRecDTO;
 import com.example.product.api.dto.ProductQuery;
+import com.example.product.api.dto.ProductAdjustRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -37,6 +38,10 @@ public interface ProductApi {
     Result<PageResult<ProductDTO>> page(@ModelAttribute PageParam pageParam,
                                         @ModelAttribute ProductQuery query);
 
+    @Operation(summary = "热销商品TOP榜（按销量降序）")
+    @GetMapping("/top")
+    Result<List<ProductDTO>> top(@RequestParam(value = "limit", defaultValue = "10") Integer limit);
+
     @Operation(summary = "查询商品")
     @GetMapping("/{id}")
     Result<ProductDTO> get(@PathVariable("id") Long id);
@@ -65,6 +70,10 @@ public interface ProductApi {
     @GetMapping("/rec/by-product")
     Result<List<ProductRecDTO>> recommendByProduct(@RequestParam("productId") Long productId,
                                                    @RequestParam(value = "limit", defaultValue = "6") Integer limit);
+
+    @Operation(summary = "内部：支付成功后扣减库存并累加销量")
+    @PostMapping("/adjust/after-pay")
+    Result<Boolean> adjustAfterPay(@Valid @RequestBody List<ProductAdjustRequest> items);
 }
 
 

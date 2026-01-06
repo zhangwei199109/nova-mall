@@ -25,6 +25,11 @@ public interface ProductAppService {
     boolean delete(Long id);
 
     /**
+     * 热销商品TOP榜（按销量）。
+     */
+    List<ProductDTO> topBySales(Integer limit);
+
+    /**
      * 简单按商品推荐，规则/热度驱动。
      */
     java.util.List<ProductRecDTO> recommendByProduct(Long productId, Integer limit);
@@ -32,6 +37,11 @@ public interface ProductAppService {
     boolean onShelf(Long id);
 
     boolean offShelf(Long id);
+
+    /**
+     * 支付后扣减库存并累加销量（内部调用）。
+     */
+    boolean adjustAfterPay(java.util.List<com.example.product.api.dto.ProductAdjustRequest> items);
 }
 
 
