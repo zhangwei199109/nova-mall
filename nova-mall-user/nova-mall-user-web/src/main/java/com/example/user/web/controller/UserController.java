@@ -3,6 +3,7 @@ package com.example.user.web.controller;
 import com.example.common.dto.Result;
 import com.example.user.api.UserApi;
 import com.example.user.api.dto.UserDTO;
+import com.example.user.api.dto.AddressDTO;
 import com.example.user.service.UserAppService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -60,6 +61,43 @@ public class UserController implements UserApi {
     @Override
     public Result<String> health() {
         return Result.success("User service is running");
+    }
+
+    @Override
+    public Result<List<AddressDTO>> listAddresses(Long userId) {
+        return Result.success(userService.listAddress(userId));
+    }
+
+    @Override
+    public Result<AddressDTO> createAddress(Long userId, @Valid @RequestBody AddressDTO dto) {
+        return Result.success(userService.createAddress(userId, dto));
+    }
+
+    @Override
+    public Result<AddressDTO> updateAddress(Long userId, Long addressId, @Valid @RequestBody AddressDTO dto) {
+        AddressDTO updated = userService.updateAddress(userId, addressId, dto);
+        if (updated == null) {
+            return Result.error(404, "地址不存在");
+        }
+        return Result.success(updated);
+    }
+
+    @Override
+    public Result<Boolean> deleteAddress(Long userId, Long addressId) {
+        boolean ok = userService.deleteAddress(userId, addressId);
+        if (!ok) {
+            return Result.error(404, "地址不存在");
+        }
+        return Result.success(true);
+    }
+
+    @Override
+    public Result<Boolean> setDefaultAddress(Long userId, Long addressId) {
+        boolean ok = userService.setDefaultAddress(userId, addressId);
+        if (!ok) {
+            return Result.error(404, "地址不存在");
+        }
+        return Result.success(true);
     }
 }
 
