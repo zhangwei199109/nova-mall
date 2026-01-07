@@ -25,6 +25,25 @@ public interface UserAppService {
     boolean deleteAddress(Long userId, Long addressId);
 
     boolean setDefaultAddress(Long userId, Long addressId);
+
+    /**
+     * 注册用户，已做唯一性校验。
+     */
+    com.example.user.api.dto.UserDTO register(String username, String email, String mobile, String encodedPassword);
+
+    /**
+     * 通过用户名/邮箱/手机号查询用户。
+     */
+    com.example.user.api.dto.UserDTO findByIdentifier(String identifier);
+
+    /**
+     * 更新用户密码（BCrypt 已编码）。
+     */
+    boolean updatePassword(Long userId, String encodedPassword);
+
+    void recordSession(Long userId, String deviceId, String refreshHash, java.time.Instant expireAt, String ip, String userAgent);
+
+    void deactivateSessionByHash(String refreshHash);
 }
 
 

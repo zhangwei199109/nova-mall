@@ -8,6 +8,11 @@ public class LoginRequest {
     @NotBlank
     private String password;
 
+    /**
+     * 可选：客户端生成的设备指纹
+     */
+    private String deviceId;
+
     public String getUsername() {
         return username;
     }
@@ -23,7 +28,16 @@ public class LoginRequest {
     public void setPassword(String password) {
         this.password = password;
     }
+
+    public String getDeviceId() {
+        return deviceId;
+    }
+
+    public void setDeviceId(String deviceId) {
+        this.deviceId = deviceId;
+    }
 }
+
 
 
 

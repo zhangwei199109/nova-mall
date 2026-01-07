@@ -1,6 +1,7 @@
 package com.example.user.web.service;
 
 import com.example.user.web.service.RefreshTokenStore.RefreshSession;
+import com.example.user.service.UserAppService;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
@@ -23,18 +24,21 @@ public class TokenService {
     private final long accessExpireMinutes;
     private final long refreshExpireMinutes;
     private final RefreshTokenStore refreshTokenStore;
+    private final UserAppService userAppService;
 
     public TokenService(@Value("${jwt.secret}") String secret,
                         @Value("${jwt.expire-minutes:120}") long accessExpireMinutes,
                         @Value("${jwt.refresh-expire-minutes:4320}") long refreshExpireMinutes,
-                        RefreshTokenStore refreshTokenStore) {
+                        RefreshTokenStore refreshTokenStore,
+                        UserAppService userAppService) {
         this.secretKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
         this.accessExpireMinutes = accessExpireMinutes;
         this.refreshExpireMinutes = refreshExpireMinutes;
         this.refreshTokenStore = refreshTokenStore;
+        this.userAppService = userAppService;
     }
 
-    public AuthTokens generateTokens(String userId, String username, List<String> roles) {
+    public AuthTokens generateTokens(String userId, String username, List<String> roles, String deviceId, String ip, String userAgent) {
         Instant now = Instant.now();
         Instant accessExp = now.plusSeconds(accessExpireMinutes * 60);
         Instant refreshExp = now.plusSeconds(refreshExpireMinutes * 60);
@@ -65,7 +69,8 @@ public class TokenService {
                 .signWith(secretKey)
                 .compact();
 
-        refreshTokenStore.save(hash(refreshToken), new RefreshSession(userId, username, roles, refreshExp));
+        refreshTokenStore.save(hash(refreshToken), new RefreshSession(userId, username, roles, refreshExp, deviceId));
+        userAppService.recordSession(Long.parseLong(userId), deviceId, hash(refreshToken), refreshExp, ip, userAgent);
         return new AuthTokens(userId, username, List.copyOf(roles), accessToken, refreshToken);
     }
 
@@ -80,7 +85,10 @@ public class TokenService {
                 .orElseThrow(() -> new IllegalArgumentException("refresh token 无效或已过期"));
         // 单次刷新：移除旧的 refresh token
         refreshTokenStore.remove(tokenHash);
-        return generateTokens(session.userId(), session.username(), List.copyOf(session.roles()));
+        userAppService.deactivateSessionByHash(tokenHash);
+        return generateTokens(session.userId(), session.username(), List.copyOf(session.roles()),
+                session.deviceId() == null ? "dev-" + session.userId() : session.deviceId(),
+                null, null);
     }
 
     private Claims parse(String token) {

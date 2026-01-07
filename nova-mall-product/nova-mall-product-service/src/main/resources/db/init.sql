@@ -1,19 +1,19 @@
 CREATE TABLE IF NOT EXISTS products (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
-    description VARCHAR(1024),
-    price DECIMAL(18,2) NOT NULL,
-    stock INT NOT NULL,
-    category_id BIGINT NULL,
-    brand VARCHAR(255) NULL,
-    tags VARCHAR(512) NULL,
-    sold_count INT NOT NULL DEFAULT 0,
-    view_count INT NOT NULL DEFAULT 0,
-    status TINYINT NOT NULL DEFAULT 1,
-    create_time TIMESTAMP,
-    update_time TIMESTAMP,
-    deleted TINYINT DEFAULT 0
-);
+    id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '商品ID',
+    name VARCHAR(255) NOT NULL COMMENT '商品名称',
+    description VARCHAR(1024) COMMENT '商品描述',
+    price DECIMAL(18,2) NOT NULL COMMENT '价格',
+    stock INT NOT NULL COMMENT '库存',
+    category_id BIGINT NULL COMMENT '类目ID',
+    brand VARCHAR(255) NULL COMMENT '品牌',
+    tags VARCHAR(512) NULL COMMENT '标签，逗号分隔',
+    sold_count INT NOT NULL DEFAULT 0 COMMENT '累计销量',
+    view_count INT NOT NULL DEFAULT 0 COMMENT '浏览量',
+    status TINYINT NOT NULL DEFAULT 1 COMMENT '状态：1上架，0下架',
+    create_time TIMESTAMP COMMENT '创建时间',
+    update_time TIMESTAMP COMMENT '更新时间',
+    deleted TINYINT DEFAULT 0 COMMENT '逻辑删除：0未删，1已删'
+) COMMENT='商品表';
 
 INSERT INTO products(name, description, price, stock, category_id, brand, tags, sold_count, view_count, status, create_time, update_time, deleted)
 VALUES ('iPhone 15', 'Apple phone', 6999.00, 50, 101, 'Apple', '手机,旗舰', 1200, 8000, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0);

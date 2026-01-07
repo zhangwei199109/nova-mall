@@ -24,6 +24,9 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/auth/login",
                                 "/auth/refresh",
+                                "/auth/register",
+                                "/auth/send-reset-code",
+                                "/auth/reset-password",
                                 "/user/auth/login",
                                 "/user/auth/refresh",
                                 "/doc.html",

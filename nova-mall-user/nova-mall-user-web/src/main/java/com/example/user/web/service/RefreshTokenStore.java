@@ -34,6 +34,6 @@ public class RefreshTokenStore {
         cache.invalidate(tokenHash);
     }
 
-    public record RefreshSession(String userId, String username, java.util.List<String> roles, Instant expiresAt) {}
+    public record RefreshSession(String userId, String username, java.util.List<String> roles, Instant expiresAt, String deviceId) {}
 }
 
