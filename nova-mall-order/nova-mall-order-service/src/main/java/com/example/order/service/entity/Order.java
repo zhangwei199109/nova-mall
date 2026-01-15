@@ -30,6 +30,16 @@ public class Order {
 
     private String status;
 
+    /**
+     * 发货时间，用于自动收货。
+     */
+    private LocalDateTime shipTime;
+
+    /**
+     * 完成时间。
+     */
+    private LocalDateTime finishTime;
+
     @Version
     private Integer version;
 

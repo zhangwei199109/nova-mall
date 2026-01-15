@@ -79,4 +79,14 @@ public class OrderController implements OrderApi {
     public Result<Boolean> updateStatus(Long id, @Valid OrderStatusUpdateRequest req) {
         return Result.success(orderAppService.updateStatusInternal(id, req));
     }
+
+    @Override
+    public Result<Boolean> ship(Long id) {
+        return Result.success(orderAppService.ship(id));
+    }
+
+    @Override
+    public Result<Boolean> finish(Long id, boolean auto) {
+        return Result.success(orderAppService.finish(id, auto));
+    }
 }

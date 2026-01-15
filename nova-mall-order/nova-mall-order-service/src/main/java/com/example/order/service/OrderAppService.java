@@ -28,4 +28,15 @@ public interface OrderAppService {
     boolean pay(Long id, Long userId, boolean fromCallback, String callbackKey);
 
     boolean cancel(Long id, Long userId);
+
+    /**
+     * 商家发货：从 PAID -> SHIPPED
+     */
+    boolean ship(Long id);
+
+    /**
+     * 确认收货：从 SHIPPED -> FINISHED
+     * @param auto 是否自动收货（用于审计或后续扩展）
+     */
+    boolean finish(Long id, boolean auto);
 }

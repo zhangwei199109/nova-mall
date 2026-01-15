@@ -51,5 +51,14 @@ public interface OrderApi {
     @PostMapping("/{id}/status")
     Result<Boolean> updateStatus(@PathVariable Long id,
                                  @Valid @RequestBody OrderStatusUpdateRequest req);
+
+    @Operation(summary = "订单发货（内部/商家使用）")
+    @PostMapping("/{id}/ship")
+    Result<Boolean> ship(@PathVariable Long id);
+
+    @Operation(summary = "订单收货（用户或自动）")
+    @PostMapping("/{id}/finish")
+    Result<Boolean> finish(@PathVariable Long id,
+                           @RequestParam(value = "auto", defaultValue = "false") boolean auto);
 }
 

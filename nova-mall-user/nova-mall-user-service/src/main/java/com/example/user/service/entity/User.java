@@ -21,6 +21,17 @@ public class User {
 
     private String email;
 
+    private String mobile;
+
+    private String avatar;
+
+    private String gender;
+
+    /**
+     * BCrypt 密码
+     */
+    private String password;
+
     private Integer age;
 
     @TableLogic

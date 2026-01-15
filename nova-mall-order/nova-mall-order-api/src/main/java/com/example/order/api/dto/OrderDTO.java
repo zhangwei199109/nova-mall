@@ -25,6 +25,12 @@ public class OrderDTO {
     @Schema(description = "订单状态", example = "CREATED")
     private String status;
 
+    @Schema(description = "发货时间")
+    private java.time.LocalDateTime shipTime;
+
+    @Schema(description = "完成时间")
+    private java.time.LocalDateTime finishTime;
+
     @Schema(description = "订单项列表")
     private List<OrderItemDTO> items;
 }
