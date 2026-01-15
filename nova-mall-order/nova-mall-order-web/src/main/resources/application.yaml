@@ -60,6 +60,13 @@ logging:
     com.example: DEBUG
     com.example.order.service.mapper: DEBUG
 
+rocketmq:
+  name-server: 127.0.0.1:9876
+  producer:
+    group: order-producer-group
+  consumer:
+    pull-batch-size: 16
+
 service:
   ops:
     base-url: http://localhost:8090
