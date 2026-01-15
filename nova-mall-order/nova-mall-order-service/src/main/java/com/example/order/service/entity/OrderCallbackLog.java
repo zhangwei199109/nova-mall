@@ -7,6 +7,7 @@ import lombok.Data;
 
 import java.time.LocalDateTime;
 
+/** 订单回调日志，记录幂等回调键与创建时间，用于防重。 */
 @Data
 @TableName("order_callback_log")
 public class OrderCallbackLog {
@@ -14,10 +15,13 @@ public class OrderCallbackLog {
     @TableId(type = IdType.AUTO)
     private Long id;
 
+    /** 关联订单 ID */
     private Long orderId;
 
+    /** 回调幂等键（如支付/库存回调标识） */
     private String callbackKey;
 
+    /** 创建时间 */
     private LocalDateTime createTime;
 
     public Long getId() {

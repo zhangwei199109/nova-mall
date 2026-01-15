@@ -6,28 +6,37 @@ import lombok.Data;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
+/** 订单明细表，记录每个订单行的商品与数量价格信息。 */
 @Data
 @TableName("order_items")
 public class OrderItem {
     @TableId(type = IdType.AUTO)
     private Long id;
 
+    /** 关联的订单主表 ID */
     private Long orderId;
 
+    /** 商品 ID */
     private Long productId;
 
+    /** 商品名称（下单快照） */
     private String productName;
 
+    /** 成交单价（下单快照） */
     private BigDecimal price;
 
+    /** 购买数量 */
     private Integer quantity;
 
+    /** 逻辑删除标记 */
     @TableLogic
     private Integer deleted;
 
+    /** 创建时间 */
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createTime;
 
+    /** 最近更新时间 */
     @TableField(fill = FieldFill.INSERT_UPDATE)
     private LocalDateTime updateTime;
 

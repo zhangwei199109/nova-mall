@@ -12,6 +12,10 @@ import lombok.Data;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
+/**
+ * 订单主表，记录订单编号、用户、金额、状态以及关键时间戳。
+ * 搭配 {@link com.example.order.service.entity.OrderItem} 维护订单明细。
+ */
 @Data
 @TableName("orders")
 public class Order {
@@ -19,15 +23,20 @@ public class Order {
     @TableId(type = IdType.AUTO)
     private Long id;
 
+    /** 业务订单号（外显与对账用） */
     private String orderNo;
 
+    /** 幂等键，防重复下单/支付 */
     @TableField("idem_key")
     private String idemKey;
 
+    /** 下单用户 ID */
     private Long userId;
 
+    /** 订单总金额（优惠后应付） */
     private BigDecimal amount;
 
+    /** 订单状态，取值见 OrderStatus */
     private String status;
 
     /**
@@ -40,15 +49,19 @@ public class Order {
      */
     private LocalDateTime finishTime;
 
+    /** 乐观锁版本号，防并发覆盖 */
     @Version
     private Integer version;
 
+    /** 逻辑删除标记 */
     @TableLogic
     private Integer deleted;
 
+    /** 创建时间 */
     @TableField(value = "create_time", fill = FieldFill.INSERT)
     private LocalDateTime createTime;
 
+    /** 最近更新时间 */
     @TableField(value = "update_time", fill = FieldFill.INSERT_UPDATE)
     private LocalDateTime updateTime;
 
