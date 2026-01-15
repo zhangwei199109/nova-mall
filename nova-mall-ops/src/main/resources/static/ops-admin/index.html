@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>OPS 简易后台</title>
+  <style>
+    :root { font-family: system-ui, -apple-system, sans-serif; color: #1f2937; background: #f7f9fb; }
+    body { margin: 0; padding: 16px; }
+    h1 { margin: 0 0 12px 0; }
+    .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px 16px; margin-bottom: 12px; box-shadow: 0 1px 2px rgba(0,0,0,0.04); }
+    .row { display: flex; gap: 8px; flex-wrap: wrap; }
+    input, select, button { padding: 8px; font-size: 14px; }
+    input, select { border: 1px solid #d1d5db; border-radius: 6px; }
+    button { background: #2563eb; color: white; border: none; border-radius: 6px; cursor: pointer; }
+    button.secondary { background: #6b7280; }
+    button.danger { background: #dc2626; }
+    table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+    th, td { border: 1px solid #e5e7eb; padding: 6px 8px; text-align: left; }
+    .status { font-weight: 600; }
+    .offline { color: #dc2626; }
+    .online { color: #16a34a; }
+    .muted { color: #6b7280; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <h1>运营后台（简易版）</h1>
+
+  <div class="card">
+    <div class="row">
+      <input id="username" placeholder="用户名" value="admin">
+      <input id="password" type="password" placeholder="密码" value="admin123">
+      <button id="btnLogin">登录获取JWT</button>
+      <span id="loginStatus" class="muted"></span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="row">
+      <input id="actId" placeholder="活动ID(更新用)">
+      <input id="productId" placeholder="商品ID" type="number">
+      <input id="title" placeholder="标题">
+      <input id="price" placeholder="秒杀价" type="number" step="0.01">
+      <input id="stock" placeholder="总库存" type="number">
+      <input id="limit" placeholder="限购" type="number">
+      <input id="start" placeholder="开始时间 2025-12-24T00:00:00" size="24">
+      <input id="end" placeholder="结束时间 2025-12-31T23:59:59" size="24">
+      <button id="btnSave">新建/更新</button>
+    </div>
+    <div class="muted">更新时填写活动ID，其余字段必填。</div>
+  </div>
+
+  <div class="card">
+    <div class="row">
+      <input id="prodIdForShelf" placeholder="商品ID" type="number">
+      <button id="btnOnShelf">商品上架</button>
+      <button id="btnOffShelf" class="secondary">商品下架</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="row">
+      <button id="btnReload">刷新活动列表</button>
+    </div>
+    <table>
+      <thead>
+      <tr>
+        <th>ID</th><th>商品ID</th><th>标题</th><th>价格</th><th>库存</th><th>限购</th><th>开始</th><th>结束</th><th>状态</th><th>操作</th>
+      </tr>
+      </thead>
+      <tbody id="tb"></tbody>
+    </table>
+    <div id="msg" class="muted"></div>
+  </div>
+
+<script>
+  const apiBase = '';
+  const storeKey = 'ops_jwt';
+  let token = localStorage.getItem(storeKey) || '';
+  const authHeader = () => token ? {'Authorization': 'Bearer ' + token} : {};
+  const el = id => document.getElementById(id);
+  const msg = t => { el('msg').innerText = t; };
+  const loginStatus = t => { el('loginStatus').innerText = t; };
+
+  async function login() {
+    const body = {username: el('username').value.trim(), password: el('password').value.trim()};
+    const r = await fetch(apiBase + '/auth/login', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(body)
+    });
+    const data = await r.json();
+    if (data.code === 200 && data.data) {
+      token = data.data;
+      localStorage.setItem(storeKey, token);
+      loginStatus('已登录');
+      await loadList();
+    } else {
+      loginStatus('登录失败: ' + (data.message || r.status));
+    }
+  }
+
+  async function loadList() {
+    msg('加载中...');
+    const r = await fetch(apiBase + '/admin/activities', {headers: authHeader()});
+    if (!r.ok) { msg('加载失败 ' + r.status); return; }
+    const data = await r.json();
+    if (data.code !== 200) { msg('加载失败 ' + data.message); return; }
+    renderTable(data.data || []);
+    msg('加载完成');
+  }
+
+  function renderTable(list) {
+    const tbody = el('tb');
+    tbody.innerHTML = '';
+    list.forEach(it => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${it.id ?? ''}</td>
+        <td>${it.productId ?? ''}</td>
+        <td>${it.title ?? ''}</td>
+        <td>${it.seckillPrice ?? ''}</td>
+        <td>${it.totalStock ?? ''}</td>
+        <td>${it.limitPerUser ?? ''}</td>
+        <td>${it.startTime ?? ''}</td>
+        <td>${it.endTime ?? ''}</td>
+        <td class="status ${it.status === 'ONLINE' ? 'online' : 'offline'}">${it.status ?? ''}</td>
+        <td>
+          <button data-id="${it.id}" class="online">上线</button>
+          <button data-id="${it.id}" class="offline secondary">下线</button>
+        </td>`;
+      tbody.appendChild(tr);
+    });
+    tbody.querySelectorAll('button.online').forEach(btn => btn.onclick = () => changeStatus(btn.dataset.id, true));
+    tbody.querySelectorAll('button.offline').forEach(btn => btn.onclick = () => changeStatus(btn.dataset.id, false));
+  }
+
+  async function changeStatus(id, online) {
+    if (!id) return;
+    const r = await fetch(apiBase + `/admin/activities/${id}/${online ? 'online' : 'offline'}`, {
+      method: 'POST',
+      headers: {...authHeader()}
+    });
+    const data = await r.json();
+    if (data.code === 200) {
+      msg((online ? '上线' : '下线') + '成功');
+      loadList();
+    } else {
+      msg((online ? '上线' : '下线') + '失败: ' + data.message);
+    }
+  }
+
+  async function saveActivity() {
+    const dto = {
+      id: el('actId').value ? Number(el('actId').value) : null,
+      productId: Number(el('productId').value),
+      title: el('title').value,
+      seckillPrice: Number(el('price').value),
+      totalStock: Number(el('stock').value),
+      limitPerUser: Number(el('limit').value),
+      startTime: el('start').value,
+      endTime: el('end').value
+    };
+    const isUpdate = !!dto.id;
+    const url = isUpdate ? `/admin/activities/${dto.id}` : '/admin/activities';
+    const method = isUpdate ? 'PUT' : 'POST';
+    const r = await fetch(apiBase + url, {
+      method,
+      headers: {'Content-Type': 'application/json', ...authHeader()},
+      body: JSON.stringify(dto)
+    });
+    const data = await r.json();
+    if (data.code === 200) {
+      msg((isUpdate ? '更新' : '新建') + '成功');
+      await loadList();
+    } else {
+      msg((isUpdate ? '更新' : '新建') + '失败: ' + data.message);
+    }
+  }
+
+  async function productShelf(on) {
+    const pid = el('prodIdForShelf').value;
+    if (!pid) { msg('请输入商品ID'); return; }
+    const r = await fetch(apiBase + `/admin/products/${pid}/${on ? 'on-shelf' : 'off-shelf'}`, {
+      method: 'POST',
+      headers: authHeader()
+    });
+    const data = await r.json();
+    if (data.code === 200) {
+      msg(`商品${on ? '上架' : '下架'}成功`);
+    } else {
+      msg(`商品${on ? '上架' : '下架'}失败: ` + data.message);
+    }
+  }
+
+  // bind
+  el('btnLogin').onclick = login;
+  el('btnReload').onclick = loadList;
+  el('btnSave').onclick = saveActivity;
+  el('btnOnShelf').onclick = () => productShelf(true);
+  el('btnOffShelf').onclick = () => productShelf(false);
+
+  // auto login state
+  if (token) { loginStatus('已登录(缓存)'); loadList(); }
+</script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
