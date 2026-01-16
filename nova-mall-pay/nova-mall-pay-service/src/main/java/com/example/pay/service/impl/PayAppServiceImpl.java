@@ -5,6 +5,8 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.example.common.exception.BusinessException;
 import com.example.pay.api.dto.*;
 import com.example.pay.service.PayAppService;
+import com.example.pay.service.channel.PayChannel;
+import com.example.pay.service.channel.PayChannelRouter;
 import com.example.pay.service.entity.Payment;
 import com.example.pay.service.entity.Refund;
 import com.example.pay.service.mapper.PaymentMapper;
@@ -32,18 +34,21 @@ public class PayAppServiceImpl implements PayAppService {
     private final PaymentCallbackLogMapper paymentCallbackLogMapper;
     private final RefundCallbackLogMapper refundCallbackLogMapper;
     private final com.example.pay.service.channel.AlipayChannelClient alipayChannelClient;
+    private final PayChannelRouter payChannelRouter;
     private final OrderApi orderApi;
 
     public PayAppServiceImpl(PaymentMapper paymentMapper, RefundMapper refundMapper,
                             PaymentCallbackLogMapper paymentCallbackLogMapper,
                             RefundCallbackLogMapper refundCallbackLogMapper,
                             com.example.pay.service.channel.AlipayChannelClient alipayChannelClient,
+                            PayChannelRouter payChannelRouter,
                             OrderApi orderApi) {
         this.paymentMapper = paymentMapper;
         this.refundMapper = refundMapper;
         this.paymentCallbackLogMapper = paymentCallbackLogMapper;
         this.refundCallbackLogMapper = refundCallbackLogMapper;
         this.alipayChannelClient = alipayChannelClient;
+        this.payChannelRouter = payChannelRouter;
         this.orderApi = orderApi;
     }
 
@@ -68,10 +73,15 @@ public class PayAppServiceImpl implements PayAppService {
         payment.setOrderId(req.getOrderId());
         payment.setUserId(null); // 可在调用方透传并填充
         payment.setAmount(req.getAmount());
-        payment.setChannel("ALIPAY");
+        String channel = req.getChannel() == null ? "ALIPAY" : req.getChannel().toUpperCase();
+        payment.setChannel(channel);
         payment.setCurrency("CNY");
-        String qr = alipayChannelClient.precreate(payment.getPayNo(), payment.getAmount(), "ORDER-" + req.getOrderId());
-        payment.setExtra("{\"qrCode\":\"" + qr + "\"}");
+        PayChannel payChannel = payChannelRouter.route(channel);
+        if (payChannel == null) {
+            throw new BusinessException(400, "不支持的支付渠道:" + channel);
+        }
+        String extra = payChannel.prepay(payment.getPayNo(), payment.getAmount(), "ORDER-" + req.getOrderId());
+        payment.setExtra(extra);
         payment.setStatus("INIT");
         payment.setIdemKey(StringUtils.hasText(idemKey) ? idemKey : null);
         try {
@@ -238,7 +248,11 @@ public class PayAppServiceImpl implements PayAppService {
             throw e;
         }
         // 调用渠道退款
-        String channelRefundNo = alipayChannelClient.refund(payment.getPayNo(), req.getAmount(), req.getReason());
+        PayChannel payChannel = payChannelRouter.route(payment.getChannel());
+        if (payChannel == null) {
+            throw new BusinessException(400, "不支持的支付渠道:" + payment.getChannel());
+        }
+        String channelRefundNo = payChannel.refund(payment.getPayNo(), req.getAmount(), req.getReason());
         if (channelRefundNo != null) {
             refund.setChannelRefundNo(channelRefundNo);
             refundMapper.updateById(refund);

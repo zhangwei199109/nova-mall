@@ -37,3 +37,28 @@ springdoc:
     url: /v3/api-docs
     config-url: /v3/api-docs/swagger-config
 
+
+pay:
+  channel:
+    alipay:
+      enabled: true
+      gateway: https://openapi.alipay.com/gateway.do
+      appId: your-alipay-appid
+      privateKey: your-alipay-private-key
+      alipayPublicKey: your-alipay-public-key
+      notifyUrl: https://your-domain.com/pay/notify/alipay
+      returnUrl: https://your-domain.com/pay/return/alipay
+    wechat:
+      enabled: true
+      mchId: your-wechat-mchid
+      appId: your-wechat-appid
+      apiV3Key: your-wechat-apiv3key
+      notifyUrl: https://your-domain.com/pay/notify/wechat
+      h5ReturnUrl: https://your-domain.com/pay/return/wechat
+    unionpay:
+      enabled: true
+      merchantId: your-unionpay-merch
+      frontUrl: https://your-domain.com/pay/return/unionpay
+      backUrl: https://your-domain.com/pay/notify/unionpay
+      certPath: classpath:unionpay.pfx
+      certPwd: your-cert-pwd

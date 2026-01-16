@@ -21,7 +21,7 @@ public class PaymentCreateRequest {
     private BigDecimal amount;
 
     @NotBlank
-    @Schema(description = "支付渠道（mock）", example = "MOCK")
+    @Schema(description = "支付渠道", example = "ALIPAY/WECHAT/UNIONPAY")
     private String channel;
 }
 

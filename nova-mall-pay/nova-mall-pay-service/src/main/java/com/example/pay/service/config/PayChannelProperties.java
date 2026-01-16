@@ -9,6 +9,8 @@ import org.springframework.context.annotation.Configuration;
 @Data
 public class PayChannelProperties {
     private Alipay alipay = new Alipay();
+    private Wechat wechat = new Wechat();
+    private Unionpay unionpay = new Unionpay();
 
     @Data
     public static class Alipay {
@@ -21,6 +23,26 @@ public class PayChannelProperties {
         private String charset = "UTF-8";
         private String notifyUrl;
         private String returnUrl;
+    }
+
+    @Data
+    public static class Wechat {
+        private boolean enabled = false;
+        private String mchId;
+        private String appId;
+        private String apiV3Key;
+        private String notifyUrl;
+        private String h5ReturnUrl;
+    }
+
+    @Data
+    public static class Unionpay {
+        private boolean enabled = false;
+        private String merchantId;
+        private String frontUrl;
+        private String backUrl;
+        private String certPath;
+        private String certPwd;
     }
 }
 
