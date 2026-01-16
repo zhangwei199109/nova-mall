@@ -6,6 +6,8 @@ import com.example.ai.api.dto.ProductCopyResponse;
 import com.example.ai.api.dto.SemanticSearchRequest;
 import com.example.ai.api.dto.SemanticSearchResult;
 import com.example.ai.api.dto.RecommendRequest;
+import com.example.ai.api.dto.PriceIntelRequest;
+import com.example.ai.api.dto.PriceIntelResponse;
 import com.example.common.dto.Result;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -55,5 +57,9 @@ public interface AiApi {
     @Operation(summary = "商品相似/相关推荐", description = "基于商品ID或标签偏好，返回 TopK 相似结果")
     @PostMapping(value = "/product/recommend", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     Result<List<SemanticSearchResult>> recommend(@Valid @RequestBody RecommendRequest req);
+
+    @Operation(summary = "价格/竞争情报调价建议", description = "输入当前价、竞品价、转化率，给出安全幅度调价建议")
+    @PostMapping(value = "/price/advise", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    Result<PriceIntelResponse> priceAdvise(@Valid @RequestBody PriceIntelRequest req);
 }
 

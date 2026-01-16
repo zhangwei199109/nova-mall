@@ -100,6 +100,22 @@ public class LlmClient {
         }
     }
 
+    /**
+     * 通用生成接口：提供 system/user 提示词，返回纯文本内容。
+     */
+    public String generatePlain(String systemPrompt, String userPrompt) {
+        try {
+            return requireChatClient().prompt()
+                    .system(systemPrompt)
+                    .user(userPrompt)
+                    .call()
+                    .content();
+        } catch (Exception e) {
+            log.warn("generatePlain failed: {}", e.toString());
+            return null;
+        }
+    }
+
     private ChatClient requireChatClient() {
         if (chatClient == null) {
             throw new IllegalStateException("Spring AI ChatClient 未注入，请检查 spring.ai.openai.api-key/base-url 及依赖是否生效");

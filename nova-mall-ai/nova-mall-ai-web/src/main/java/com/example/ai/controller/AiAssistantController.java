@@ -7,8 +7,11 @@ import com.example.ai.api.dto.ProductCopyResponse;
 import com.example.ai.api.dto.SemanticSearchRequest;
 import com.example.ai.api.dto.SemanticSearchResult;
 import com.example.ai.api.dto.RecommendRequest;
+import com.example.ai.api.dto.PriceIntelRequest;
+import com.example.ai.api.dto.PriceIntelResponse;
 import com.example.ai.service.AiProductService;
 import com.example.ai.service.AiQaService;
+import com.example.ai.service.AiPriceService;
 import com.example.ai.retrieve.RetrievedDoc;
 import com.example.common.dto.Result;
 import jakarta.validation.Valid;
@@ -35,10 +38,13 @@ public class AiAssistantController implements AiApi {
 
     private final AiQaService aiQaService;
     private final AiProductService aiProductService;
+    private final AiPriceService aiPriceService;
 
-    public AiAssistantController(AiQaService aiQaService, AiProductService aiProductService) {
+    public AiAssistantController(AiQaService aiQaService, AiProductService aiProductService,
+                                 AiPriceService aiPriceService) {
         this.aiQaService = aiQaService;
         this.aiProductService = aiProductService;
+        this.aiPriceService = aiPriceService;
     }
 
     @PostMapping("/qa")
@@ -138,6 +144,12 @@ public class AiAssistantController implements AiApi {
     @Override
     public Result<java.util.List<SemanticSearchResult>> recommend(@Valid @RequestBody RecommendRequest req) {
         return Result.success(aiProductService.recommend(req));
+    }
+
+    @PostMapping(value = "/price/advise", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    @Override
+    public Result<PriceIntelResponse> priceAdvise(@Valid @RequestBody PriceIntelRequest req) {
+        return Result.success(aiPriceService.advise(req));
     }
 
     private boolean trySendSse(SseEmitter emitter, AtomicBoolean done, AtomicLong seq, String requestId,
