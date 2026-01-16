@@ -23,3 +23,4 @@ public interface OpsSeckillActivityMapper extends BaseMapper<OpsSeckillActivity>
 
 
 
+

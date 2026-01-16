@@ -6,12 +6,11 @@ import com.example.ai.api.dto.ProductCopyRequest;
 import com.example.ai.api.dto.ProductCopyResponse;
 import com.example.ai.api.dto.SemanticSearchRequest;
 import com.example.ai.api.dto.SemanticSearchResult;
+import com.example.ai.api.dto.RecommendRequest;
 import com.example.ai.service.AiProductService;
 import com.example.ai.service.AiQaService;
 import com.example.ai.retrieve.RetrievedDoc;
 import com.example.common.dto.Result;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -32,7 +31,6 @@ import java.util.concurrent.atomic.AtomicLong;
 
 @RestController
 @RequestMapping("/ai")
-@Tag(name = "智能客服/问答", description = "检索 + LLM 风格回答（支持 SSE/Chunk 流式）")
 public class AiAssistantController implements AiApi {
 
     private final AiQaService aiQaService;
@@ -43,14 +41,12 @@ public class AiAssistantController implements AiApi {
         this.aiProductService = aiProductService;
     }
 
-    @Operation(summary = "问答", description = "输入问题，检索 FAQ 并通过 LLM 生成回答")
     @PostMapping("/qa")
     @Override
     public Result<String> qa(@Valid @RequestBody QaRequest req) {
         return Result.success(aiQaService.answer(req.getQuestion()));
     }
 
-    @Operation(summary = "问答-流式(POST SSE)", description = "以 SSE 流式返回答复")
     @PostMapping(value = "/qa/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     @Override
     public SseEmitter qaStream(@Valid @RequestBody QaRequest req) {
@@ -76,7 +72,6 @@ public class AiAssistantController implements AiApi {
         return emitter;
     }
 
-    @Operation(summary = "问答-流式(GET SSE)", description = "GET SSE，便于浏览器原生 EventSource 使用")
     @GetMapping(value = "/qa/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     @Override
     public SseEmitter qaStreamGet(@RequestParam("question") String question) {
@@ -102,7 +97,6 @@ public class AiAssistantController implements AiApi {
         return emitter;
     }
 
-    @Operation(summary = "问答-流式(POST chunked)", description = "POST + chunked JSON 行流，兼容 fetch 流式读取")
     @PostMapping(value = "/qa/stream-chunk", produces = MediaType.APPLICATION_JSON_VALUE)
     @Override
     public ResponseBodyEmitter qaStreamChunk(@Valid @RequestBody QaRequest req) {
@@ -128,18 +122,22 @@ public class AiAssistantController implements AiApi {
         return emitter;
     }
 
-    @Operation(summary = "商品文案生成", description = "输入商品要素，生成标题/卖点/描述/SEO 关键词")
     @PostMapping(value = "/product/copy", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     @Override
     public Result<ProductCopyResponse> generateProductCopy(@Valid @RequestBody ProductCopyRequest req) {
         return Result.success(aiProductService.generateCopy(req));
     }
 
-    @Operation(summary = "商品语义搜索/推荐", description = "自然语言找商品，返回 TopK 语义相关结果")
     @PostMapping(value = "/product/search", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     @Override
     public Result<java.util.List<SemanticSearchResult>> semanticSearch(@Valid @RequestBody SemanticSearchRequest req) {
         return Result.success(aiProductService.semanticSearch(req));
+    }
+
+    @PostMapping(value = "/product/recommend", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    @Override
+    public Result<java.util.List<SemanticSearchResult>> recommend(@Valid @RequestBody RecommendRequest req) {
+        return Result.success(aiProductService.recommend(req));
     }
 
     private boolean trySendSse(SseEmitter emitter, AtomicBoolean done, AtomicLong seq, String requestId,

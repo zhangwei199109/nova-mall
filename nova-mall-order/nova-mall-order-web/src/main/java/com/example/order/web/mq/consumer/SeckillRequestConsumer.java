@@ -44,3 +44,4 @@ public class SeckillRequestConsumer implements RocketMQListener<SeckillRequestMe
 }
 
 
+

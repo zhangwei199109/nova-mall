@@ -5,8 +5,6 @@ import com.example.common.web.AuthContext;
 import com.example.order.api.dto.SeckillPlaceRequest;
 import com.example.order.web.mq.message.SeckillRequestMessage;
 import com.example.order.web.mq.producer.SeckillRequestProducer;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -19,7 +17,6 @@ import java.util.concurrent.ThreadLocalRandom;
 
 @RestController
 @RequestMapping("/seckill")
-@Tag(name = "秒杀排队", description = "将用户秒杀请求投递到 RocketMQ，由订单侧异步处理")
 @RequiredArgsConstructor
 public class SeckillQueueController {
 
@@ -27,7 +24,6 @@ public class SeckillQueueController {
     private final AuthContext authContext;
 
     @PostMapping("/request")
-    @Operation(summary = "提交秒杀请求（排队进入 MQ）")
     public Result<Long> enqueue(@Valid @RequestBody SeckillPlaceRequest req, HttpServletRequest servletRequest) {
         Long userId = authContext.currentUserId();
         SeckillRequestMessage msg = new SeckillRequestMessage();
@@ -42,5 +38,6 @@ public class SeckillQueueController {
         return Result.success(msg.getRequestId());
     }
 }
+
 
 

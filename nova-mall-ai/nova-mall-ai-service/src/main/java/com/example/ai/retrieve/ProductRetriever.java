@@ -8,6 +8,8 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -25,6 +27,8 @@ public class ProductRetriever {
             new ProductDoc("sku-1004", "户外冲锋衣三合一", "防水透气面料，可拆卸抓绒内胆，四季通用", List.of("户外", "防水", "冲锋衣", "保暖")),
             new ProductDoc("sku-1005", "原味坚果每日坚果30包", "6种坚果科学配比，独立小袋便携分享", List.of("零食", "坚果", "独立包装", "健康"))
     );
+    private static final Map<String, ProductDoc> CATALOG_MAP = CATALOG.stream()
+            .collect(Collectors.toMap(doc -> doc.id, doc -> doc));
 
     /**
      * 简单打分：查询词拆分后在名称/摘要/标签中的命中次数；若无空格（纯中文）则用整句匹配兜底，避免总是空。
@@ -96,6 +100,60 @@ public class ProductRetriever {
         return sorted;
     }
 
+    /**
+     * 基于商品ID或标签偏好做相似/猜你喜欢推荐。
+     */
+    public List<SemanticSearchResult> recommendSimilar(String productId, List<String> preferTags, int topK) {
+        ProductDoc seed = CATALOG_MAP.get(productId);
+        Set<String> tagSet = normalizeTags(preferTags);
+        if (seed != null) {
+            if (tagSet.isEmpty() && seed.tags != null) {
+                tagSet = seed.tags.stream().map(t -> t.toLowerCase(Locale.ROOT)).collect(Collectors.toSet());
+            }
+        }
+        List<SemanticSearchResult> scored = new ArrayList<>();
+        for (ProductDoc doc : CATALOG) {
+            if (seed != null && doc.id.equals(seed.id)) {
+                continue; // 不推荐自身
+            }
+            double score = 0;
+            StringBuilder reason = new StringBuilder();
+            if (seed != null) {
+                double tagScore = jaccardTags(seed.tags, doc.tags);
+                if (tagScore > 0) {
+                    score += tagScore * 2.0;
+                    reason.append("与参考商品标签相似;");
+                }
+                if (doc.desc.contains(seed.name) || doc.name.contains(seed.name)) {
+                    score += 0.5;
+                }
+            }
+            if (!tagSet.isEmpty()) {
+                double preferScore = jaccard(tagSet, doc.tags);
+                if (preferScore > 0) {
+                    score += preferScore * 1.5;
+                    reason.append("匹配偏好标签;");
+                }
+            }
+            if (score > 0) {
+                scored.add(new SemanticSearchResult(doc.id, doc.nameRaw, doc.descRaw, score,
+                        reason.isEmpty() ? "相似推荐" : reason.toString()));
+            }
+        }
+        List<SemanticSearchResult> sorted = scored.stream()
+                .sorted(Comparator.comparingDouble(SemanticSearchResult::getScore).reversed())
+                .limit(topK <= 0 ? 5 : topK)
+                .collect(Collectors.toList());
+        if (sorted.isEmpty()) {
+            return CATALOG.stream()
+                    .filter(doc -> seed == null || !doc.id.equals(seed.id))
+                    .limit(topK <= 0 ? 5 : topK)
+                    .map(doc -> new SemanticSearchResult(doc.id, doc.nameRaw, doc.descRaw, 0.01, "默认推荐"))
+                    .collect(Collectors.toList());
+        }
+        return sorted;
+    }
+
     private double jaccard(List<String> tags, String[] tokens) {
         if (tags == null || tokens == null || tags.isEmpty()) return 0;
         List<String> tokenList = new ArrayList<>();
@@ -113,6 +171,37 @@ public class ProductRetriever {
         inter.retainAll(tokenSet);
         if (union.isEmpty()) return 0;
         return (double) inter.size() / union.size();
+    }
+
+    private double jaccard(Set<String> prefer, List<String> tags) {
+        if (prefer == null || prefer.isEmpty() || tags == null || tags.isEmpty()) return 0;
+        var tagSet = tags.stream().map(t -> t.toLowerCase(Locale.ROOT)).collect(Collectors.toSet());
+        var union = new java.util.HashSet<>(tagSet);
+        union.addAll(prefer);
+        var inter = new java.util.HashSet<>(tagSet);
+        inter.retainAll(prefer);
+        if (union.isEmpty()) return 0;
+        return (double) inter.size() / union.size();
+    }
+
+    private double jaccardTags(List<String> a, List<String> b) {
+        if (a == null || b == null || a.isEmpty() || b.isEmpty()) return 0;
+        var sa = a.stream().map(t -> t.toLowerCase(Locale.ROOT)).collect(Collectors.toSet());
+        var sb = b.stream().map(t -> t.toLowerCase(Locale.ROOT)).collect(Collectors.toSet());
+        var union = new java.util.HashSet<>(sa);
+        union.addAll(sb);
+        var inter = new java.util.HashSet<>(sa);
+        inter.retainAll(sb);
+        if (union.isEmpty()) return 0;
+        return (double) inter.size() / union.size();
+    }
+
+    private Set<String> normalizeTags(List<String> tags) {
+        if (tags == null || tags.isEmpty()) return Set.of();
+        return tags.stream()
+                .filter(t -> t != null && !t.isBlank())
+                .map(t -> t.toLowerCase(Locale.ROOT).trim())
+                .collect(Collectors.toSet());
     }
 
     private String normalize(String q) {

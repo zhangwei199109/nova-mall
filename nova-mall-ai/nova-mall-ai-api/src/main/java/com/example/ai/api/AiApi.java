@@ -5,6 +5,7 @@ import com.example.ai.api.dto.ProductCopyRequest;
 import com.example.ai.api.dto.ProductCopyResponse;
 import com.example.ai.api.dto.SemanticSearchRequest;
 import com.example.ai.api.dto.SemanticSearchResult;
+import com.example.ai.api.dto.RecommendRequest;
 import com.example.common.dto.Result;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -50,5 +51,9 @@ public interface AiApi {
     @Operation(summary = "商品语义搜索/推荐", description = "自然语言找商品，返回 TopK 语义相关结果")
     @PostMapping(value = "/product/search", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     Result<List<SemanticSearchResult>> semanticSearch(@Valid @RequestBody SemanticSearchRequest req);
+
+    @Operation(summary = "商品相似/相关推荐", description = "基于商品ID或标签偏好，返回 TopK 相似结果")
+    @PostMapping(value = "/product/recommend", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    Result<List<SemanticSearchResult>> recommend(@Valid @RequestBody RecommendRequest req);
 }
 

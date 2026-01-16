@@ -3,8 +3,6 @@ package com.example.ops.controller;
 import com.example.common.dto.Result;
 import com.example.ops.config.OpsAuthProperties;
 import com.example.ops.util.JwtUtil;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
@@ -18,7 +16,6 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/auth")
-@Tag(name = "认证", description = "运营后台登录获取 JWT")
 @RequiredArgsConstructor
 @Validated
 public class AuthController {
@@ -26,7 +23,6 @@ public class AuthController {
     private final OpsAuthProperties authProperties;
 
     @PostMapping("/login")
-    @Operation(summary = "登录获取 JWT")
     public Result<String> login(@RequestBody @Validated LoginRequest req) {
         if (!authProperties.getUsername().equals(req.getUsername())
                 || !authProperties.getPassword().equals(req.getPassword())) {
@@ -47,6 +43,7 @@ public class AuthController {
         private String password;
     }
 }
+
 
 
 

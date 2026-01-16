@@ -4,6 +4,7 @@ import com.example.ai.api.dto.ProductCopyRequest;
 import com.example.ai.api.dto.ProductCopyResponse;
 import com.example.ai.api.dto.SemanticSearchRequest;
 import com.example.ai.api.dto.SemanticSearchResult;
+import com.example.ai.api.dto.RecommendRequest;
 
 import java.util.List;
 
@@ -21,5 +22,10 @@ public interface AiProductService {
      * 语义搜索/推荐商品。
      */
     List<SemanticSearchResult> semanticSearch(SemanticSearchRequest req);
+
+    /**
+     * 相似/猜你喜欢推荐。
+     */
+    List<SemanticSearchResult> recommend(RecommendRequest req);
 }
 

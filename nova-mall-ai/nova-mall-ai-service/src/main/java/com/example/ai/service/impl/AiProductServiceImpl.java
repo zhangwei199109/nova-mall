@@ -4,11 +4,11 @@ import com.example.ai.api.dto.ProductCopyRequest;
 import com.example.ai.api.dto.ProductCopyResponse;
 import com.example.ai.api.dto.SemanticSearchRequest;
 import com.example.ai.api.dto.SemanticSearchResult;
+import com.example.ai.api.dto.RecommendRequest;
 import com.example.ai.llm.LlmClient;
 import com.example.ai.retrieve.ProductRetriever;
 import com.example.ai.service.AiProductService;
 import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
 
 import java.util.List;
 
@@ -37,8 +37,14 @@ public class AiProductServiceImpl implements AiProductService {
         // 1) 使用内置商品样例做关键词/标签打分
         // 2) 后续可替换为真实向量召回，这里保留 topK 入参
         int topK = req.getTopK() == null ? 5 : req.getTopK();
-        String query = StringUtils.trimWhitespace(req.getQuery());
+        String query = req.getQuery() == null ? "" : req.getQuery().trim();
         return productRetriever.search(query, topK);
+    }
+
+    @Override
+    public List<SemanticSearchResult> recommend(RecommendRequest req) {
+        int topK = req.getTopK() == null ? 5 : req.getTopK();
+        return productRetriever.recommendSimilar(req.getProductId(), req.getPreferTags(), topK);
     }
 }
 
