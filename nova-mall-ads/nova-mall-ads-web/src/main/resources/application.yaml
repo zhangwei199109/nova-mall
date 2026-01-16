@@ -1,0 +1,38 @@
+server:
+  port: 8090
+spring:
+  application:
+    name: ads-service
+  datasource:
+    url: jdbc:h2:mem:adsdb;MODE=MySQL;DB_CLOSE_DELAY=-1;DATABASE_TO_UPPER=false
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  h2:
+    console:
+      enabled: true
+  jackson:
+    serialization:
+      WRITE_DATES_AS_TIMESTAMPS: false
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  mapper-locations: classpath*:/mapper/*.xml
+logging:
+  level:
+    com.example.ads: info
+ads:
+  channel:
+    - channel: douyin
+      conversionEndpoint: https://open.douyin.com/track/conv
+      token: your_douyin_token
+      advertiserId: your_douyin_advertiser
+    - channel: xhs
+      conversionEndpoint: https://ads.xiaohongshu.com/conv
+      token: your_xhs_token
+      advertiserId: your_xhs_advertiser
+    - channel: google
+      conversionEndpoint: https://googleads.googleapis.com/conv
+      token: your_google_token
+      advertiserId: your_google_customer

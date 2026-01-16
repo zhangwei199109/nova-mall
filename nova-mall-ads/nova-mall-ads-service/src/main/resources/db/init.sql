@@ -1,0 +1,43 @@
+CREATE TABLE ad_campaign (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(128) NOT NULL,
+    channel VARCHAR(64),
+    budget INT,
+    enabled TINYINT(1) NOT NULL DEFAULT 1,
+    start_time DATETIME,
+    end_time DATETIME,
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+    update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+CREATE TABLE ad_creative (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    campaign_id BIGINT NOT NULL,
+    title VARCHAR(256) NOT NULL,
+    media_url VARCHAR(512),
+    landing_url VARCHAR(512) NOT NULL,
+    utm VARCHAR(256),
+    enabled TINYINT(1) NOT NULL DEFAULT 1,
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+    update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+CREATE TABLE ad_click_log (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    trace_id VARCHAR(64) NOT NULL,
+    campaign_id BIGINT,
+    creative_id BIGINT,
+    ip VARCHAR(64),
+    user_agent VARCHAR(512),
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE ad_conversion_log (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    trace_id VARCHAR(64) NOT NULL,
+    campaign_id BIGINT,
+    creative_id BIGINT,
+    order_no VARCHAR(64),
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
