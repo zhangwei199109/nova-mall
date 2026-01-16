@@ -1,22 +1,16 @@
 package com.example.pay.service.channel.impl;
 
 import com.example.pay.service.channel.PayChannel;
-import com.example.pay.service.channel.AlipayChannelClient;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
+import java.util.UUID;
 
 /**
- * 支付宝渠道适配，复用已有 AlipayChannelClient（mock）。
+ * 支付宝渠道骨架，返回模拟预支付/退款数据。
  */
 @Component
 public class AlipayPayChannel implements PayChannel {
-
-    private final AlipayChannelClient alipayChannelClient;
-
-    public AlipayPayChannel(AlipayChannelClient alipayChannelClient) {
-        this.alipayChannelClient = alipayChannelClient;
-    }
 
     @Override
     public String channel() {
@@ -25,13 +19,13 @@ public class AlipayPayChannel implements PayChannel {
 
     @Override
     public String prepay(String payNo, BigDecimal amount, String subject) {
-        // 使用预创建返回二维码链接
-        return "{\"qrCode\":\"" + alipayChannelClient.precreate(payNo, amount, subject) + "\"}";
+        // 模拟二维码链接
+        return "{\"qrCode\":\"https://mock.alipay.com/qr/" + payNo + "\"}";
     }
 
     @Override
     public String refund(String payNo, BigDecimal amount, String reason) {
-        return alipayChannelClient.refund(payNo, amount, reason);
+        return "ALI_REF_" + UUID.randomUUID();
     }
 }
 

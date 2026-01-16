@@ -33,21 +33,18 @@ public class PayAppServiceImpl implements PayAppService {
     private final RefundMapper refundMapper;
     private final PaymentCallbackLogMapper paymentCallbackLogMapper;
     private final RefundCallbackLogMapper refundCallbackLogMapper;
-    private final com.example.pay.service.channel.AlipayChannelClient alipayChannelClient;
     private final PayChannelRouter payChannelRouter;
     private final OrderApi orderApi;
 
     public PayAppServiceImpl(PaymentMapper paymentMapper, RefundMapper refundMapper,
                             PaymentCallbackLogMapper paymentCallbackLogMapper,
                             RefundCallbackLogMapper refundCallbackLogMapper,
-                            com.example.pay.service.channel.AlipayChannelClient alipayChannelClient,
                             PayChannelRouter payChannelRouter,
                             OrderApi orderApi) {
         this.paymentMapper = paymentMapper;
         this.refundMapper = refundMapper;
         this.paymentCallbackLogMapper = paymentCallbackLogMapper;
         this.refundCallbackLogMapper = refundCallbackLogMapper;
-        this.alipayChannelClient = alipayChannelClient;
         this.payChannelRouter = payChannelRouter;
         this.orderApi = orderApi;
     }
@@ -76,7 +73,7 @@ public class PayAppServiceImpl implements PayAppService {
         String channel = req.getChannel() == null ? "ALIPAY" : req.getChannel().toUpperCase();
         payment.setChannel(channel);
         payment.setCurrency("CNY");
-        PayChannel payChannel = payChannelRouter.route(channel);
+        var payChannel = payChannelRouter.route(channel);
         if (payChannel == null) {
             throw new BusinessException(400, "不支持的支付渠道:" + channel);
         }
@@ -142,14 +139,11 @@ public class PayAppServiceImpl implements PayAppService {
     @Override
     @Transactional
     public String alipayNotify(String callbackKey, Map<String, String> params) {
-        com.example.pay.service.channel.AlipayNotifyResult parsed = alipayChannelClient.parseAndVerifyNotify(params, callbackKey);
-        if (parsed == null) {
-            return "fail";
-        }
-        String payNo = parsed.getPayNo();
-        String tradeNo = parsed.getTradeNo();
-        String tradeStatus = parsed.getTradeStatus();
-        if (!"TRADE_SUCCESS".equalsIgnoreCase(tradeStatus)) {
+        if (params == null) return "fail";
+        String payNo = params.getOrDefault("out_trade_no", null);
+        String tradeNo = params.getOrDefault("trade_no", null);
+        String tradeStatus = params.getOrDefault("trade_status", "TRADE_SUCCESS");
+        if (payNo == null || !"TRADE_SUCCESS".equalsIgnoreCase(tradeStatus)) {
             return "fail";
         }
         Payment payment = paymentMapper.selectOne(new LambdaQueryWrapper<Payment>()
@@ -158,8 +152,16 @@ public class PayAppServiceImpl implements PayAppService {
         if (payment == null) {
             return "fail";
         }
-        if (payment.getAmount() != null && parsed.getAmount() != null
-                && parsed.getAmount().compareTo(payment.getAmount()) != 0) {
+        String amtStr = params.get("total_amount");
+        if (payment.getAmount() != null && amtStr != null) {
+            try {
+                if (new BigDecimal(amtStr).compareTo(payment.getAmount()) != 0) {
+                    return "fail";
+                }
+            } catch (Exception ignore) {
+            }
+        }
+        if (!"ALIPAY".equalsIgnoreCase(payment.getChannel())) {
             return "fail";
         }
         String cbKey = StringUtils.hasText(callbackKey) ? callbackKey : (params.getOrDefault("notify_id", "") + tradeNo);
@@ -313,21 +315,30 @@ public class PayAppServiceImpl implements PayAppService {
     @Override
     @Transactional
     public String alipayRefundNotify(String callbackKey, Map<String, String> params) {
-        com.example.pay.service.channel.AlipayRefundNotifyResult parsed = alipayChannelClient.parseRefundNotify(params, callbackKey);
-        if (parsed == null || !"REFUND_SUCCESS".equalsIgnoreCase(parsed.getStatus())) {
+        if (params == null) return "fail";
+        String refundNo = params.getOrDefault("out_request_no", null);
+        String payNo = params.getOrDefault("out_trade_no", null);
+        String channelRefundNo = params.getOrDefault("trade_no", null);
+        String status = params.getOrDefault("refund_status", "REFUND_SUCCESS");
+        String amountStr = params.getOrDefault("refund_amount", null);
+        if (refundNo == null || !"REFUND_SUCCESS".equalsIgnoreCase(status)) {
             return "fail";
         }
         Refund refund = refundMapper.selectOne(new LambdaQueryWrapper<Refund>()
-                .eq(Refund::getRefundNo, parsed.getRefundNo())
+                .eq(Refund::getRefundNo, refundNo)
                 .eq(Refund::getDeleted, 0));
         if (refund == null) {
             return "fail";
         }
-        if (parsed.getAmount() != null && refund.getAmount() != null
-                && parsed.getAmount().compareTo(refund.getAmount()) != 0) {
-            return "fail";
+        if (amountStr != null && refund.getAmount() != null) {
+            try {
+                if (new BigDecimal(amountStr).compareTo(refund.getAmount()) != 0) {
+                    return "fail";
+                }
+            } catch (Exception ignore) {
+            }
         }
-        String cbKey = StringUtils.hasText(callbackKey) ? callbackKey : (params.getOrDefault("notify_id", "") + parsed.getChannelRefundNo());
+        String cbKey = StringUtils.hasText(callbackKey) ? callbackKey : (params.getOrDefault("notify_id", "") + channelRefundNo);
         if (StringUtils.hasText(cbKey)) {
             try {
                 com.example.pay.service.entity.RefundCallbackLog log = new com.example.pay.service.entity.RefundCallbackLog();
@@ -343,7 +354,7 @@ public class PayAppServiceImpl implements PayAppService {
                 .eq(Refund::getId, refund.getId())
                 .eq(Refund::getStatus, "INIT")
                 .set(Refund::getStatus, "SUCCESS")
-                .set(Refund::getChannelRefundNo, parsed.getChannelRefundNo())
+                .set(Refund::getChannelRefundNo, channelRefundNo)
                 .set(Refund::getVersion, refund.getVersion() + 1));
         if (updated == 0) {
             return "success";
