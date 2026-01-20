@@ -35,3 +35,5 @@ public class PriceIntelRequest {
     private BigDecimal floorPrice;
 }
 
+
+

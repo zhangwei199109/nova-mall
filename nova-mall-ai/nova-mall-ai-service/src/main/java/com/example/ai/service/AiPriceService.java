@@ -14,3 +14,5 @@ public interface AiPriceService {
     PriceIntelResponse advise(PriceIntelRequest req);
 }
 
+
+

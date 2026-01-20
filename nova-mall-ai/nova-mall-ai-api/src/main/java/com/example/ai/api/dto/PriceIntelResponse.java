@@ -24,3 +24,5 @@ public class PriceIntelResponse {
     private List<String> reasons;
 }
 
+
+

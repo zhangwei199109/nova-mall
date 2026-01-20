@@ -18,3 +18,5 @@ public interface PaymentCallbackLogMapper extends BaseMapper<PaymentCallbackLog>
 
 
 
+
+

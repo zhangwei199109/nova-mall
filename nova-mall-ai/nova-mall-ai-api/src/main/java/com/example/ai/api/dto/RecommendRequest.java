@@ -27,3 +27,5 @@ public class RecommendRequest {
     private Integer topK = 5;
 }
 
+
+

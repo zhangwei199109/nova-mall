@@ -41,3 +41,5 @@ CREATE TABLE ad_conversion_log (
     create_time DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
+
+
